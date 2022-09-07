@@ -21,6 +21,10 @@
 
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/xml_oarchive.hpp>
+#include <boost/archive/xml_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
 #include <boost/serialization/deque.hpp>
 
 namespace threadsafe_containers
@@ -46,18 +50,25 @@ public:
     {
         if(!fs::exists(m_path))
             return;
-        std::ifstream ifs(m_path.string());
-        boost::archive::text_iarchive ia(ifs);
-        ia >> *this;
+        std::ifstream stream(m_path.string());
+        boost::archive::text_iarchive ar(stream);
+        ar >> *this;
     };
 
     ~Queue()
     {
         if(m_path.empty())
             return;
-        std::ofstream ofs(m_path.string());
-        boost::archive::text_oarchive oa(ofs);
-        oa << *this;
+        {
+            std::ofstream stream(m_path.string());
+            boost::archive::text_oarchive ar(stream);
+            ar << *this;
+        }
+        {
+            std::ofstream stream(m_path.string() + ".xml");
+            boost::archive::xml_oarchive ar(stream);
+            ar << boost::serialization::make_nvp("queue", *this);
+        }
     }
 
     /// \brief  Push value into queue
@@ -210,9 +221,29 @@ private:
     // & operator is defined similar to <<.  Likewise, when the class Archive
     // is a type of input archive the & operator is defined similar to >>.
     template<class Archive>
-    void serialize(Archive & ar, [[maybe_unused]] const unsigned int version)
+    void serialize(Archive& ar, [[maybe_unused]] const unsigned int version)
     {
-        ar & m_queue;
+        constexpr bool is_text_or_bin_arc {
+            std::is_same_v<Archive, boost::archive::text_oarchive> ||
+            std::is_same_v<Archive, boost::archive::text_iarchive> ||
+            std::is_same_v<Archive, boost::archive::binary_oarchive> ||
+            std::is_same_v<Archive, boost::archive::binary_iarchive>
+        };
+
+        constexpr bool is_xml_arc {
+            std::is_same_v<Archive, boost::archive::xml_oarchive> ||
+            std::is_same_v<Archive, boost::archive::xml_iarchive>
+        };
+
+        if constexpr(is_text_or_bin_arc)
+        {
+            ar & m_queue;
+        }
+        else if constexpr(is_xml_arc)
+        {
+            using boost::serialization::make_nvp;
+            ar & make_nvp("queue", m_queue);
+        }
     }
 
 
