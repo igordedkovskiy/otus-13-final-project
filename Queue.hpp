@@ -16,15 +16,49 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <filesystem>
+#include <fstream>
+
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/serialization/deque.hpp>
 
 namespace threadsafe_containers
 {
+
+namespace fs = std::filesystem;
 
 /// \brief Simple threadsafe queue
 template<typename T, std::size_t SIZE = 10> class Queue
 {
 public:
     using pointer_type = std::unique_ptr<T>;
+
+    Queue() = default;
+
+    Queue(const Queue&) = delete;
+    Queue(Queue&&) = delete;
+    Queue& operator=(const Queue&) = delete;
+    Queue& operator=(Queue&&) = delete;
+
+    Queue(const fs::path& path):
+        m_path{path}
+    {
+        if(!fs::exists(m_path))
+            return;
+        std::ifstream ifs(m_path.string());
+        boost::archive::text_iarchive ia(ifs);
+        ia >> *this;
+    };
+
+    ~Queue()
+    {
+        if(m_path.empty())
+            return;
+        std::ofstream ofs(m_path.string());
+        boost::archive::text_oarchive oa(ofs);
+        oa << *this;
+    }
 
     /// \brief  Push value into queue
     /// \return False if queue has no space left to push \b v, true otherwise.
@@ -81,7 +115,7 @@ public:
     }
 
     /// \return True is queue is empty, false otherwise.
-    bool empty() const
+    bool empty()
     {
         std::scoped_lock lk {m_mutex};
         return m_queue.empty();
@@ -143,6 +177,12 @@ public:
         }
     }
 
+    void clear() noexcept
+    {
+        std::scoped_lock lk {m_mutex};
+        m_queue.clear();
+    }
+
     std::size_t size() const noexcept
     {
         return m_queue.size();
@@ -153,17 +193,35 @@ public:
         return SIZE;
     }
 
+    friend bool operator==(const Queue& l, const Queue& r)
+    {
+        return l.m_queue == r.m_queue;
+    }
+
 private:
     bool full() const noexcept
     {
         return !(m_queue.size() < SIZE);
     }
 
+
+    friend class boost::serialization::access;
+    // When the class Archive corresponds to an output archive, the
+    // & operator is defined similar to <<.  Likewise, when the class Archive
+    // is a type of input archive the & operator is defined similar to >>.
+    template<class Archive>
+    void serialize(Archive & ar, [[maybe_unused]] const unsigned int version)
+    {
+        ar & m_queue;
+    }
+
+
     using queue_t = std::deque<T>;
     queue_t m_queue;
     std::condition_variable m_on_not_empty;
     std::condition_variable m_on_space_available;
     std::mutex m_mutex;
+    fs::path m_path;
 };
 
 }

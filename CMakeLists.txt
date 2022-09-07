@@ -11,8 +11,11 @@ option(GIT_SUBMODULE "Check submodules during build" ON)
 configure_file(version.h.in version.h)
 
 find_package(Threads REQUIRED)
-find_package(Boost COMPONENTS system REQUIRED)
-find_package(Boost COMPONENTS program_options REQUIRED)
+find_package(Boost COMPONENTS REQUIRED
+    system
+    serialization
+    program_options
+)
 if(NOT Boost_FOUND)
     print("Boost was not found")
 endif()
@@ -34,6 +37,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${CMAKE_THREAD_LIBS_INIT}
     ${Boost_LIBRARIES}
 )
+
 
 if(WITH_GTEST)
     find_package(GTest QUIET)
@@ -100,10 +104,11 @@ if(WITH_GTEST)
 #    )
 
     target_link_libraries(tests PRIVATE
-        ${GTEST_BOTH_LIBRARIES}
         gtest
         gtest_main
+        ${GTEST_BOTH_LIBRARIES}
         ${CMAKE_THREAD_LIBS_INIT}
+        ${Boost_LIBRARIES}
     )
 endif()
 

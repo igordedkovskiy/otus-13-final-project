@@ -7,6 +7,9 @@
 #include <chrono>
 #include <exception>
 
+/// \brief Enables std::pair serialization
+#include <boost/serialization/utility.hpp>
+
 //#include "input.hpp"
 #include "Queue.hpp"
 
