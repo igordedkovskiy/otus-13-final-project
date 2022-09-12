@@ -1,13 +1,3 @@
-//
-// async_tcp_echo_server.cpp
-// ~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Copyright (c) 2003-2019 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
-
 #pragma once
 
 #include <cstdlib>
@@ -53,7 +43,7 @@ public:
         std::ifstream stream(m_path.string());
         boost::archive::text_iarchive ar(stream);
         ar >> *this;
-    };
+    }
 
     ~Queue()
     {
@@ -75,12 +65,10 @@ public:
     /// \return False if queue has no space left to push \b v, true otherwise.
     bool push(T v)
     {
-        {
-            std::scoped_lock lk {m_mutex};
-            if(full())
-                return false;
-            m_queue.emplace_back(std::move(v));
-        }
+        std::scoped_lock lk {m_mutex};
+        if(full())
+            return false;
+        m_queue.emplace_back(std::move(v));
         if(m_queue.size() == 1)
             m_on_not_empty.notify_one();
         return true;

@@ -50,6 +50,18 @@ TEST(TEST_QUEUE, serialize_queue)
     }
 }
 
+TEST(TEST_QUEUE, producer_consumer)
+{
+    // create input data
+    // create producer
+    // move input data into producer
+    // create graph
+    // create consumer, move graph into consumer
+    // create framework
+    // move producer and consumer into framework
+    // run framework
+}
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
