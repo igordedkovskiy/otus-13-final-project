@@ -46,8 +46,8 @@ TEST(TEST_QUEUE, serialize_queue)
     {
         auto newq_p = newq.pop();
         auto q_p = q.pop();
-        std::cout << "newq.top: " << std::setw(3) << *newq_p
-                  << "; q.top: " << std::setw(3) << *q_p << '\n';
+        //std::cout << "newq.top: " << std::setw(3) << *newq_p
+        //          << "; q.top: " << std::setw(3) << *q_p << '\n';
         EXPECT_EQ(*newq_p, *q_p);
     }
 }
@@ -62,6 +62,7 @@ TEST(TEST_QUEUE, producer_consumer)
     using data_t = std::uint64_t;
     using data_collection_t = std::list<data_t>;
     using all_data_collection_t = std::vector<data_collection_t>;
+    using cond_cntr_t = std::atomic_llong;
 
     constexpr std::size_t num_of_elements {1000};
 
@@ -71,57 +72,56 @@ TEST(TEST_QUEUE, producer_consumer)
                                      data_collection_t(num_of_elements/num_of_producers,1));
     };
 
-    auto producer = [](Queue<data_t>& queue, data_collection_t& data)
+    auto producer = [](Queue<data_t>& queue, const data_collection_t& data, cond_cntr_t& el_left)
     {
-        std::cout << "producer " << std::this_thread::get_id() << ": start" << std::endl;
-        for(auto it {std::begin(data)}; it != std::end(data);)
+        for(auto el:data)
         {
-            queue.wait_if_full_push(*it);
-            it = data.erase(it);
+            queue.wait_if_full_push(el);
+            --el_left;
         }
-        std::cout << "producer " << std::this_thread::get_id() << ": end" << std::endl;
     };
 
-    auto consumer = [](Queue<data_t>& queue, const all_data_collection_t& data)
+    auto consumer = [](Queue<data_t>& queue, const cond_cntr_t& el_left)
     {
-        std::cout << "consumer " << std::this_thread::get_id() << ": start" << std::endl;
-        auto data_empty = [&data]()
-        {
-            for(const auto& el:data)
-            {
-                if(!el.empty())
-                    return false;
-            }
-            return true;
-        };
-
-        std::size_t cntr = 0;
-
+        std::size_t cntr {0};
         do
         {
             auto el {queue.pop()};
             if(el)
+            {
                 cntr += *el;
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(1ms);
+            }
         }
-        while(!queue.empty() || !data_empty());
-        std::cout << "consumer " << std::this_thread::get_id() << ": end" << std::endl;
+        while(!queue.empty() || el_left);
     };
 
-    auto run = [&producer, &consumer, &make_data](auto num_of_producers, auto num_of_consumers)
+    // create input data
+    // create producer
+    // move input data into producer
+    // create graph
+    // create consumer, move graph into consumer
+    // create framework
+    // move producer and consumer into framework
+    // run framework
+    auto run = [&producer, &consumer, &make_data](std::size_t num_of_producers, std::size_t num_of_consumers)
     {
-        std::cout << "run start" << std::endl;
-        auto data {make_data(num_of_producers)};
+        const auto start {clock::now()};
+        const auto data {make_data(num_of_producers)};
         Queue<data_t> queue;
+
+        cond_cntr_t elements_left (num_of_elements);
 
         std::vector<std::thread> producers;
         producers.reserve(num_of_producers);
         for(auto& producers_data:data)
-            producers.emplace_back(producer, std::ref(queue), std::ref(producers_data));
+            producers.emplace_back(producer, std::ref(queue), std::ref(producers_data), std::ref(elements_left));
 
         std::vector<std::thread> consumers;
         consumers.reserve(num_of_consumers);
         for(std::size_t cntr {0}; cntr < num_of_consumers; ++cntr)
-            consumers.emplace_back(consumer, std::ref(queue), std::ref(data));
+            consumers.emplace_back(consumer, std::ref(queue), std::ref(elements_left));
 
         for(auto& cons:consumers)
         {
@@ -133,28 +133,17 @@ TEST(TEST_QUEUE, producer_consumer)
             if(prod.joinable())
                 prod.join();
         }
-        std::cout << "run end" << std::endl;
+        EXPECT_TRUE(queue.empty());
+        return duration_cast<milliseconds>(clock::now() - start).count();
     };
 
-    auto start {clock::now()};
-    // create input data
-    // create producer
-    // move input data into producer
-    // create graph
-    // create consumer, move graph into consumer
-    // create framework
-    // move producer and consumer into framework
-    // run framework
-    run(1, 1);
-    const auto single_duration {duration_cast<milliseconds>(clock::now() - start).count()};
-    start = clock::now();
+    const auto single_duration {run(1, 1)};
     // repeat for multiple tests
-    run(4, 4);
-    const auto multiple_duration {duration_cast<milliseconds>(clock::now() - start).count()};
+    const auto multiple_duration {run(4, 4)};
     std::cout << "single_duration|multiple_duration (ms): "
               << single_duration << '|'
               << multiple_duration << std::endl;
-    EXPECT_LT(single_duration, multiple_duration);
+    EXPECT_GE(single_duration, multiple_duration);
 }
 
 int main(int argc, char** argv)

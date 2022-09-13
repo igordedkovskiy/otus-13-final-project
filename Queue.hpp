@@ -70,7 +70,7 @@ public:
             return false;
         m_queue.emplace_back(std::move(v));
         if(m_queue.size() == 1)
-            m_on_not_empty.notify_one();
+            m_on_not_empty.notify_all();
         return true;
     }
 
@@ -85,7 +85,7 @@ public:
         v = std::move(m_queue.front());
         m_queue.pop_front();
         if(m_queue.size() == SIZE - 1)
-            m_on_space_available.notify_one();
+            m_on_space_available.notify_all();
         return true;
     }
 
@@ -99,7 +99,7 @@ public:
         auto p {std::make_unique<T>(m_queue.front())};
         m_queue.pop_front();
         if(m_queue.size() == SIZE - 1)
-            m_on_space_available.notify_one();
+            m_on_space_available.notify_all();
         return p;
     }
 
@@ -123,57 +123,40 @@ public:
     /// \brief  Wait if queue is full, push \b v into queue.
     void wait_if_full_push(T v)
     {
-        while(true)
-        {
-            std::unique_lock lk {m_mutex};
-            // condition_variable::wait atomically unlocks lk, blocks the current executing thread,
-            // and adds it to the list of threads waiting on *this. The thread will be unblocked
-            // when notify_all() or notify_one() is executed. It may also be unblocked spuriously.
-            // When unblocked, regardless of the reason, lock is reacquired and wait exits.
-            // Thus, deadlock is impossible.
-            m_on_space_available.wait(lk, [this]{ return !full(); });
-            if(!full())
-            {
-                m_queue.push_back(std::move(v));
-                return;
-            }
-        }
+        std::unique_lock lk {m_mutex};
+        // condition_variable::wait atomically unlocks lk, blocks the current executing thread,
+        // and adds it to the list of threads waiting on *this. The thread will be unblocked
+        // when notify_all() or notify_all() is executed. It may also be unblocked spuriously.
+        // When unblocked, regardless of the reason, lock is reacquired and wait exits.
+        // Thus, deadlock is impossible.
+        // Overload with predicate may be used to ignore spurious awakenings.
+        m_on_space_available.wait(lk, [this]{ return !full(); });
+        m_queue.emplace_back(std::move(v));
+        if(m_queue.size() == 1)
+            m_on_not_empty.notify_all();
     }
 
     /// \brief Wait until queue is empty, dequeue element and place it's value into \b v.
     void wait_until_empty_pop(T& v)
     {
-        while(true)
-        {
-            std::unique_lock lk {m_mutex};
-            m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
-            if(!m_queue.empty())
-            {
-                v = std::move(m_queue.front());
-                m_queue.pop_front();
-                if(m_queue.size() == SIZE - 1)
-                    m_on_space_available.notify_one();
-                return;
-            }
-        }
+        std::unique_lock lk {m_mutex};
+        m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
+        v = std::move(m_queue.front());
+        m_queue.pop_front();
+        if(m_queue.size() == SIZE - 1)
+            m_on_space_available.notify_all();
     }
 
     /// \brief Wait until queue is empty, dequeue element and return it's value.
     pointer_type wait_until_empty_pop()
     {
-        while(true)
-        {
-            std::unique_lock lk {m_mutex};
-            m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
-            if(!m_queue.empty())
-            {
-                auto p {std::make_unique<T>(m_queue.front())};
-                m_queue.pop_front();
-                if(m_queue.size() == SIZE - 1)
-                    m_on_space_available.notify_one();
-                return p;
-            }
-        }
+        std::unique_lock lk {m_mutex};
+        m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
+        auto p {std::make_unique<T>(m_queue.front())};
+        m_queue.pop_front();
+        if(m_queue.size() == SIZE - 1)
+            m_on_space_available.notify_all();
+        return p;
     }
 
     void clear() noexcept
