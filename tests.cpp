@@ -56,20 +56,28 @@ TEST(TEST_QUEUE, serialize_queue)
 ///        Second is multiple producers, multiple consumers.
 TEST(TEST_QUEUE, producer_consumer)
 {
+    const auto num_of_cores {std::thread::hardware_concurrency()};
+    std::cout << "number of cores is " << num_of_cores << std::endl;
+    if(num_of_cores == 1)
+        return;
+
     using namespace std::chrono;
     using namespace threadsafe_containers;
     using clock = system_clock;
     using data_t = std::uint64_t;
-    using data_collection_t = std::list<data_t>;
+    using data_collection_t = std::vector<data_t>;
     using all_data_collection_t = std::vector<data_collection_t>;
     using cond_cntr_t = std::atomic_llong;
+    using num_of_elements_t = std::size_t;
+    using ranges_t = std::vector<num_of_elements_t>;
 
-    constexpr std::size_t num_of_elements {1000};
-
-    auto make_data = [num_of_elements](auto num_of_producers)
+    auto make_data = [](std::size_t num_of_producers, const ranges_t& ranges)
     {
-        return all_data_collection_t(num_of_producers,
-                                     data_collection_t(num_of_elements/num_of_producers,1));
+        all_data_collection_t data;
+        data.reserve(num_of_producers);
+        for(auto num_of_elements:ranges)
+            data.emplace_back(data_collection_t(num_of_elements, 1));
+        return data;
     };
 
     auto producer = [](Queue<data_t>& queue, const data_collection_t& data, cond_cntr_t& el_left)
@@ -84,7 +92,7 @@ TEST(TEST_QUEUE, producer_consumer)
     auto consumer = [](Queue<data_t>& queue, const cond_cntr_t& el_left)
     {
         std::size_t cntr {0};
-        do
+        while(!queue.empty() || el_left)
         {
             auto el {queue.pop()};
             if(el)
@@ -94,7 +102,6 @@ TEST(TEST_QUEUE, producer_consumer)
                 std::this_thread::sleep_for(1ms);
             }
         }
-        while(!queue.empty() || el_left);
     };
 
     // create input data
@@ -105,10 +112,30 @@ TEST(TEST_QUEUE, producer_consumer)
     // create framework
     // move producer and consumer into framework
     // run framework
-    auto run = [&producer, &consumer, &make_data](std::size_t num_of_producers, std::size_t num_of_consumers)
+    auto run = [&producer, &consumer, &make_data]
+            (std::size_t num_of_producers, std::size_t num_of_consumers, std::size_t num_of_elements)
     {
         const auto start {clock::now()};
-        const auto data {make_data(num_of_producers)};
+
+        auto split = [&num_of_elements, &num_of_producers]()
+        {
+            if(num_of_producers == 1)
+                return ranges_t(1, num_of_elements);
+            const auto size {num_of_elements / num_of_producers};
+            ranges_t ranges;
+            ranges.reserve(num_of_producers);
+            for(std::size_t cntr {0}; cntr < num_of_producers - 1; ++cntr)
+                ranges.push_back(size);
+            ranges.push_back(num_of_elements - size * (num_of_producers - 1));
+            return ranges;
+        };
+
+        const auto ranges {split()};
+//        std::cout << "ranges: ";
+//        for(auto v:ranges)
+//            std::cout << v << ' ';
+//        std::cout << std::endl;
+        const auto data {make_data(num_of_producers, ranges)};
         Queue<data_t> queue;
 
         cond_cntr_t elements_left (num_of_elements);
@@ -133,17 +160,27 @@ TEST(TEST_QUEUE, producer_consumer)
             if(prod.joinable())
                 prod.join();
         }
-        EXPECT_TRUE(queue.empty());
-        return duration_cast<milliseconds>(clock::now() - start).count();
+        return std::make_pair(duration_cast<milliseconds>(clock::now() - start).count(), queue.empty());
     };
 
-    const auto single_duration {run(1, 1)};
-    // repeat for multiple tests
-    const auto multiple_duration {run(4, 4)};
-    std::cout << "single_duration|multiple_duration (ms): "
-              << single_duration << '|'
-              << multiple_duration << std::endl;
-    EXPECT_GE(single_duration, multiple_duration);
+    constexpr std::size_t num_of_elements {1000};
+    /// \note one producers / consumers
+    const auto [single_duration, result] {run(1, 1, num_of_elements)};
+    ASSERT_TRUE(result);
+
+    for(std::size_t mfactor {1}; mfactor < 6; ++mfactor)
+    {
+        /// \note multiple producers / consumers
+        /// \note num_of_producers = num_of_cores * mfactor
+        const auto [multiple_duration, result2] {run(num_of_cores * mfactor, num_of_cores * mfactor,
+                                          num_of_elements)};
+        ASSERT_TRUE(result2);
+
+        std::cout << "single_duration|multiple_duration (ms): "
+                  << single_duration << '|'
+                  << multiple_duration << std::endl;
+        ASSERT_GE(single_duration, multiple_duration);
+    }
 }
 
 int main(int argc, char** argv)
