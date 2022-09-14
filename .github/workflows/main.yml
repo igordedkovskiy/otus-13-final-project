@@ -15,10 +15,10 @@ jobs:
           submodules: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: sudo apt-get install libboost-all-dev
-      #- run: sudo apt-get install -y libboost-system-dev
-      #- run: sudo apt-get install -y libboost-program-options-dev
-      #- run: sudo apt-get install -y libboost-serialization-dev
+      #- run: sudo apt-get install libboost-all-dev
+      - run: sudo apt-get install -y libboost-system-dev
+      - run: sudo apt-get install -y libboost-program-options-dev
+      - run: sudo apt-get install -y libboost-serialization-dev
       - run: sudo apt install gcc-11 g++-11
       - run: cmake -S . -B ./Release -DPATCH_VERSION=${{ github.run_number }} -DWITH_GTEST=ON
         shell: bash

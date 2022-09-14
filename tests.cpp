@@ -8,6 +8,7 @@
 #include <numeric>
 #include <iterator>
 #include <chrono>
+#include <cmath>
 #include "gtest/gtest.h"
 
 #include "Queue.hpp"
@@ -76,7 +77,13 @@ TEST(TEST_QUEUE, producer_consumer)
         all_data_collection_t data;
         data.reserve(num_of_producers);
         for(auto num_of_elements:ranges)
-            data.emplace_back(data_collection_t(num_of_elements, 1));
+        {
+            data_collection_t element;
+            element.reserve(num_of_elements);
+            for(std::size_t cntr {0}; cntr < num_of_elements; ++cntr)
+                element.emplace_back(rand() % 24);
+            data.emplace_back(std::move(element));
+        }
         return data;
     };
 
@@ -91,15 +98,19 @@ TEST(TEST_QUEUE, producer_consumer)
 
     auto consumer = [](Queue<data_t>& queue, const cond_cntr_t& el_left)
     {
-        std::size_t cntr {0};
+        //std::size_t cntr {0};
         while(!queue.empty() || el_left)
         {
             auto el {queue.pop()};
             if(el)
             {
-                cntr += *el;
-                using namespace std::chrono_literals;
-                std::this_thread::sleep_for(1ms);
+                std::vector<data_t> v;
+                const std::size_t N {100000};
+                v.reserve(N);
+                for(std::size_t cntr {0}; cntr < N; ++cntr)
+                    v.emplace_back(rand() % 100 + *el);
+                //using namespace std::chrono_literals;
+                //std::this_thread::sleep_for(1ms);
             }
         }
     };
@@ -170,15 +181,20 @@ TEST(TEST_QUEUE, producer_consumer)
 
     for(std::size_t mfactor {1}; mfactor < 6; ++mfactor)
     {
-        /// \note multiple producers / consumers
-        /// \note num_of_producers = num_of_cores * mfactor
-        const auto [multiple_duration, result2] {run(num_of_cores * mfactor, num_of_cores * mfactor,
-                                          num_of_elements)};
+        /// \note multiple producers / consumers. Number of consumers = number of producers.
+        const std::size_t num_of_producers {
+            static_cast<std::remove_cv_t<decltype(num_of_producers)>>(0.5 * num_of_cores * mfactor)};
+        const auto [multiple_duration, result2]{run(num_of_producers, num_of_producers, num_of_elements)};
         ASSERT_TRUE(result2);
 
         std::cout << "single_duration|multiple_duration (ms): "
-                  << single_duration << '|'
-                  << multiple_duration << std::endl;
+                  << single_duration << '|' << multiple_duration;
+        std::cout << "\tnumber of producers|consumers: "
+                  << num_of_producers << '|' << num_of_producers
+                  << std::endl;
+        //std::cout << "single_duration|multiple_duration (ms): "
+        //          << single_duration << '|'
+        //          << multiple_duration << std::endl;
         ASSERT_GE(single_duration, multiple_duration);
     }
 }
