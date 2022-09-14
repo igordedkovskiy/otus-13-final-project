@@ -190,7 +190,7 @@ TEST(TEST_QUEUE, producer_consumer)
         const auto [multiple_duration, result2]{run(num_of_producers, num_of_producers, num_of_elements)};
         ASSERT_TRUE(result2);
 
-        std::cout << "single_duration|multiple_duration (ms): "
+        std::cout << "duration single|multiple (ms): "
                   << single_duration << '|' << multiple_duration
                   << "\tnumber of producers|consumers: "
                   << num_of_producers << '|' << num_of_producers
