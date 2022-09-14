@@ -183,8 +183,10 @@ TEST(TEST_QUEUE, producer_consumer)
     for(std::size_t mfactor {1}; mfactor < 6; ++mfactor)
     {
         /// \note multiple producers / consumers. Number of consumers = number of producers.
-        const std::size_t num_of_producers {
-            static_cast<std::remove_cv_t<decltype(num_of_producers)>>(0.5 * num_of_cores * mfactor)};
+        //const std::size_t num_of_producers {
+        //    static_cast<std::remove_cv_t<decltype(num_of_producers)>>(0.5 * num_of_cores * mfactor)};
+        const std::size_t num_of_producers { static_cast<std::remove_cv_t<decltype(num_of_producers)>>
+            (num_of_cores > 2 ? 0.5 * num_of_cores * mfactor: num_of_cores * mfactor)};
         const auto [multiple_duration, result2]{run(num_of_producers, num_of_producers, num_of_elements)};
         ASSERT_TRUE(result2);
 
