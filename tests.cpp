@@ -81,7 +81,8 @@ TEST(TEST_QUEUE, producer_consumer)
             data_collection_t element;
             element.reserve(num_of_elements);
             for(std::size_t cntr {0}; cntr < num_of_elements; ++cntr)
-                element.emplace_back(rand() % 24);
+                //element.emplace_back(rand() % 24 + cntr);
+                element.emplace_back(cntr * 13);
             data.emplace_back(std::move(element));
         }
         return data;
@@ -108,7 +109,8 @@ TEST(TEST_QUEUE, producer_consumer)
                 const std::size_t N {100000};
                 v.reserve(N);
                 for(std::size_t cntr {0}; cntr < N; ++cntr)
-                    v.emplace_back(rand() % 100 + *el);
+                    //v.emplace_back(rand() % 100 + *el);
+                    v.emplace_back(cntr + *el);
                 //using namespace std::chrono_literals;
                 //std::this_thread::sleep_for(1ms);
             }
@@ -126,8 +128,6 @@ TEST(TEST_QUEUE, producer_consumer)
     auto run = [&producer, &consumer, &make_data]
             (std::size_t num_of_producers, std::size_t num_of_consumers, std::size_t num_of_elements)
     {
-        const auto start {clock::now()};
-
         auto split = [&num_of_elements, &num_of_producers]()
         {
             if(num_of_producers == 1)
@@ -153,6 +153,7 @@ TEST(TEST_QUEUE, producer_consumer)
 
         std::vector<std::thread> producers;
         producers.reserve(num_of_producers);
+        const auto start {clock::now()};
         for(auto& producers_data:data)
             producers.emplace_back(producer, std::ref(queue), std::ref(producers_data), std::ref(elements_left));
 
