@@ -188,14 +188,11 @@ TEST(TEST_QUEUE, producer_consumer)
         ASSERT_TRUE(result2);
 
         std::cout << "single_duration|multiple_duration (ms): "
-                  << single_duration << '|' << multiple_duration;
-        std::cout << "\tnumber of producers|consumers: "
+                  << single_duration << '|' << multiple_duration
+                  << "\tnumber of producers|consumers: "
                   << num_of_producers << '|' << num_of_producers
                   << std::endl;
-        //std::cout << "single_duration|multiple_duration (ms): "
-        //          << single_duration << '|'
-        //          << multiple_duration << std::endl;
-        ASSERT_GE(single_duration, multiple_duration);
+        EXPECT_GE(single_duration, multiple_duration);
     }
 }
 
