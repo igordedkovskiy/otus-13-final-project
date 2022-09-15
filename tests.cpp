@@ -51,80 +51,89 @@ TEST(TEST_QUEUE, serializer_exceptions)
     }
 }
 
-//TEST(TEST_QUEUE, serialize_queue_simple)
-//{
-//    namespace fs = std::filesystem;
-//    using namespace threadsafe_containers;
-//    using value_type = int;
-//    using queue_t = Queue<value_type>;
+TEST(TEST_QUEUE, serialize_queue_simple)
+{
+    namespace fs = std::filesystem;
+    using namespace threadsafe_containers;
+    using value_type = int;
+    using queue_t = Queue<value_type>;
 
-//    enum class ArchiveFormat: std::uint8_t
-//    {
-//        BIN,
-//        TXT,
-//        XML
-//    };
+    enum class ArchiveFormat: std::uint8_t
+    {
+        BIN,
+        TXT,
+        XML
+    };
 
-//    auto test = [](ArchiveFormat fmt, fs::path path)
-//    {
-//        queue_t q;
-//        q.push(1);
-//        q.push(3);
-//        q.push(6);
-//        q.push(12);
+    auto test = [](ArchiveFormat fmt, const fs::path& path)
+    {
+        queue_t q;
+        q.push(1);
+        q.push(3);
+        q.push(6);
+        q.push(12);
 
-//        queue_t newq;
+        queue_t newq;
 
-//        if(fmt == ArchiveFormat::BIN)
-//        {
-//            {
-//                std::ofstream stream{path.string()};
-//                boost::archive::binary_oarchive ar{stream};
-//                ar << q;
-//            }
-//            EXPECT_FALSE(q.empty());
-//            {
-//                std::ifstream stream{path.string()};
-//                boost::archive::binary_iarchive ar{stream};
-//                ar >> q;
-//            }
-//        }
-//        else if(fmt == ArchiveFormat::TXT)
-//        {
-//            {
-//                std::ofstream stream{path.string()};
-//                boost::archive::text_oarchive ar{stream};
-//                ar << q;
-//            }
-//            EXPECT_FALSE(q.empty());
-//            {
-//                std::ifstream stream{path.string()};
-//                boost::archive::text_iarchive ar{stream};
-//                ar >> q;
-//            }
-//        }
-//        else if(fmt == ArchiveFormat::XML)
-//        {
-//            ;
-//        }
+        std::ofstream os{path.string(), std::ofstream::out | std::ofstream::trunc};
+        std::ifstream is{path.string(), std::ifstream::in};
 
-//        // compare newq against q
-//        EXPECT_EQ(newq, q);
-//        EXPECT_FALSE(q.empty());
-//        EXPECT_FALSE(newq.empty());
-//        while(!newq.empty())
-//        {
-//            auto newq_p = newq.pop();
-//            auto q_p = q.pop();
-//            //std::cout << "newq.top: " << std::setw(3) << *newq_p
-//            //          << "; q.top: " << std::setw(3) << *q_p << '\n';
-//            EXPECT_EQ(*newq_p, *q_p);
-//        }
-//    };
-//    test(serialization::BINSerializer<queue_t>{"qarchive"});
-//    test(serialization::TXTSerializer<queue_t>{"qarchive.txt"});
-//    test(serialization::XMLSerializer<queue_t>{"qarchive.xml"});
-//}
+        if(fmt == ArchiveFormat::BIN)
+        {
+            {
+                boost::archive::binary_oarchive ar{os};
+                ar << q;
+            }
+            EXPECT_FALSE(q.empty());
+            {
+                boost::archive::binary_iarchive ar{is};
+                ar >> newq;
+            }
+        }
+        else if(fmt == ArchiveFormat::TXT)
+        {
+            {
+                boost::archive::text_oarchive ar{os};
+                ar << q;
+            }
+            EXPECT_FALSE(q.empty());
+            {
+                boost::archive::text_iarchive ar{is};
+                ar >> newq;
+            }
+        }
+        else if(fmt == ArchiveFormat::XML)
+        {
+            {
+                boost::archive::xml_oarchive ar{os};
+                //ar << boost::serialization::make_nvp("q", q);
+                ar << BOOST_SERIALIZATION_NVP(q);
+            }
+            EXPECT_FALSE(q.empty());
+            {
+                boost::archive::xml_iarchive ar{is};
+                //ar >> boost::serialization::make_nvp("q", newq);
+                ar >> BOOST_SERIALIZATION_NVP(newq);
+            }
+        }
+
+        // compare newq against q
+        EXPECT_EQ(newq, q);
+        EXPECT_FALSE(q.empty());
+        EXPECT_FALSE(newq.empty());
+        while(!newq.empty())
+        {
+            auto newq_p = newq.pop();
+            auto q_p = q.pop();
+            //std::cout << "newq.top: " << std::setw(3) << *newq_p
+            //          << "; q.top: " << std::setw(3) << *q_p << '\n';
+            EXPECT_EQ(*newq_p, *q_p);
+        }
+    };
+    test(ArchiveFormat::BIN, "qarchive1");
+    test(ArchiveFormat::TXT, "qarchive1.txt");
+    test(ArchiveFormat::XML, "qarchive1.xml");
+}
 
 TEST(TEST_QUEUE, serialize_queue)
 {
@@ -160,9 +169,9 @@ TEST(TEST_QUEUE, serialize_queue)
             EXPECT_EQ(*newq_p, *q_p);
         }
     };
-    test(serialization::BINSerializer<queue_t>{"qarchive"});
-    test(serialization::TXTSerializer<queue_t>{"qarchive.txt"});
-    test(serialization::XMLSerializer<queue_t>{"qarchive.xml"});
+    test(serialization::BINSerializer<queue_t>{"qarchive2"});
+    test(serialization::TXTSerializer<queue_t>{"qarchive2.txt"});
+    test(serialization::XMLSerializer<queue_t>{"qarchive2.xml"});
 }
 
 

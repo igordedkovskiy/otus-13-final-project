@@ -131,6 +131,7 @@ private:
     }
 };
 
+
 template<typename T> class XMLSerializer: public Serializer<T>
 {
 public:
@@ -140,13 +141,15 @@ private:
     void serialize(const T& q, std::ofstream& stream) override
     {
         boost::archive::xml_oarchive ar{stream};
-        ar << boost::serialization::make_nvp("queue", q);
+        //ar << boost::serialization::make_nvp("data", q);
+        ar << BOOST_SERIALIZATION_NVP(q);
     }
 
     void deserialize(T& q, std::ifstream& stream) override
     {
         boost::archive::xml_iarchive ar{stream};
-        ar >> boost::serialization::make_nvp("queue", q);
+        //ar >> boost::serialization::make_nvp("data", q);
+        ar >> BOOST_SERIALIZATION_NVP(q);
     }
 };
 
