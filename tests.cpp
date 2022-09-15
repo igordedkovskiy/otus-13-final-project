@@ -14,6 +14,118 @@
 #include "Queue.hpp"
 #include "serialization.hpp"
 
+TEST(TEST_QUEUE, serializer_exceptions)
+{
+    using namespace serialization;
+    using namespace threadsafe_containers;
+    using value_type = int;
+    using queue_t = Queue<value_type>;
+    try
+    {
+        TXTSerializer<queue_t> s{"/temp/qarchive.txt"};
+    }
+    catch(const Exception& e)
+    {
+        std::string message {e.what()};
+        EXPECT_EQ(message, std::string{"Nonexistent path"});
+    }
+
+    try
+    {
+        TXTSerializer<queue_t> s{"/temp/"};
+    }
+    catch(const Exception& e)
+    {
+        std::string message {e.what()};
+        EXPECT_EQ(message, std::string{"Path doesn't contain file name"});
+    }
+
+    try
+    {
+        TXTSerializer<queue_t> s{fs::current_path()};
+    }
+    catch(const Exception& e)
+    {
+        std::string message {e.what()};
+        EXPECT_EQ(message, std::string{"Path refers to a directory not a file"});
+    }
+}
+
+//TEST(TEST_QUEUE, serialize_queue_simple)
+//{
+//    namespace fs = std::filesystem;
+//    using namespace threadsafe_containers;
+//    using value_type = int;
+//    using queue_t = Queue<value_type>;
+
+//    enum class ArchiveFormat: std::uint8_t
+//    {
+//        BIN,
+//        TXT,
+//        XML
+//    };
+
+//    auto test = [](ArchiveFormat fmt, fs::path path)
+//    {
+//        queue_t q;
+//        q.push(1);
+//        q.push(3);
+//        q.push(6);
+//        q.push(12);
+
+//        queue_t newq;
+
+//        if(fmt == ArchiveFormat::BIN)
+//        {
+//            {
+//                std::ofstream stream{path.string()};
+//                boost::archive::binary_oarchive ar{stream};
+//                ar << q;
+//            }
+//            EXPECT_FALSE(q.empty());
+//            {
+//                std::ifstream stream{path.string()};
+//                boost::archive::binary_iarchive ar{stream};
+//                ar >> q;
+//            }
+//        }
+//        else if(fmt == ArchiveFormat::TXT)
+//        {
+//            {
+//                std::ofstream stream{path.string()};
+//                boost::archive::text_oarchive ar{stream};
+//                ar << q;
+//            }
+//            EXPECT_FALSE(q.empty());
+//            {
+//                std::ifstream stream{path.string()};
+//                boost::archive::text_iarchive ar{stream};
+//                ar >> q;
+//            }
+//        }
+//        else if(fmt == ArchiveFormat::XML)
+//        {
+//            ;
+//        }
+
+//        // compare newq against q
+//        EXPECT_EQ(newq, q);
+//        EXPECT_FALSE(q.empty());
+//        EXPECT_FALSE(newq.empty());
+//        while(!newq.empty())
+//        {
+//            auto newq_p = newq.pop();
+//            auto q_p = q.pop();
+//            //std::cout << "newq.top: " << std::setw(3) << *newq_p
+//            //          << "; q.top: " << std::setw(3) << *q_p << '\n';
+//            EXPECT_EQ(*newq_p, *q_p);
+//        }
+//    };
+//    test(serialization::BINSerializer<queue_t>{"qarchive"});
+//    test(serialization::TXTSerializer<queue_t>{"qarchive.txt"});
+//    test(serialization::XMLSerializer<queue_t>{"qarchive.xml"});
+//}
+
 TEST(TEST_QUEUE, serialize_queue)
 {
     namespace fs = std::filesystem;
@@ -29,6 +141,7 @@ TEST(TEST_QUEUE, serialize_queue)
         q.push(6);
         q.push(12);
 
+        serializer.clear();
         serializer << q;
         EXPECT_FALSE(q.empty());
         // create newq and load it's value from an archive
@@ -51,6 +164,7 @@ TEST(TEST_QUEUE, serialize_queue)
     test(serialization::TXTSerializer<queue_t>{"qarchive.txt"});
     test(serialization::XMLSerializer<queue_t>{"qarchive.xml"});
 }
+
 
 /// \brief Compare execution time in two cases. First is one producer, one consumer.
 ///        Second is multiple producers, multiple consumers.
