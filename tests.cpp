@@ -12,45 +12,44 @@
 #include "gtest/gtest.h"
 
 #include "Queue.hpp"
+#include "serialization.hpp"
 
 TEST(TEST_QUEUE, serialize_queue)
 {
     namespace fs = std::filesystem;
     using namespace threadsafe_containers;
     using value_type = int;
+    using queue_t = Queue<value_type>;
 
-    const fs::path path{"qarchive"};
-    Queue<value_type> q{path};
-    // clear queue if qarchive exists and not empty
-    q.clear();
-    q.push(1);
-    q.push(3);
-    q.push(6);
-    q.push(12);
-
+    auto test = [](auto serializer)
     {
-        Queue<value_type> q{path};
-        // clear queue if qarchive exists and not empty
-        q.clear();
+        queue_t q;
         q.push(1);
         q.push(3);
         q.push(6);
         q.push(12);
-        // destroy and save q
-    }
 
-    // create newq and load it's value from an archive
-    Queue<value_type> newq{path};
-    // compare newq against q
-    EXPECT_EQ(newq, q);
-    while(!newq.empty())
-    {
-        auto newq_p = newq.pop();
-        auto q_p = q.pop();
-        //std::cout << "newq.top: " << std::setw(3) << *newq_p
-        //          << "; q.top: " << std::setw(3) << *q_p << '\n';
-        EXPECT_EQ(*newq_p, *q_p);
-    }
+        serializer << q;
+        EXPECT_FALSE(q.empty());
+        // create newq and load it's value from an archive
+        queue_t newq;
+        serializer >> newq;
+        // compare newq against q
+        EXPECT_EQ(newq, q);
+        EXPECT_FALSE(q.empty());
+        EXPECT_FALSE(newq.empty());
+        while(!newq.empty())
+        {
+            auto newq_p = newq.pop();
+            auto q_p = q.pop();
+            //std::cout << "newq.top: " << std::setw(3) << *newq_p
+            //          << "; q.top: " << std::setw(3) << *q_p << '\n';
+            EXPECT_EQ(*newq_p, *q_p);
+        }
+    };
+    test(serialization::BINSerializer<queue_t>{"qarchive"});
+    test(serialization::TXTSerializer<queue_t>{"qarchive.txt"});
+    test(serialization::XMLSerializer<queue_t>{"qarchive.xml"});
 }
 
 /// \brief Compare execution time in two cases. First is one producer, one consumer.

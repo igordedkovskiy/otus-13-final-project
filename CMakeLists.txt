@@ -21,6 +21,23 @@ if(NOT Boost_FOUND)
 endif()
 
 
+add_library(serialization_lib
+    "serialization.hpp"
+    "serialization.cpp"
+)
+set_target_properties(serialization_lib PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+)
+target_include_directories(serialization_lib PRIVATE
+    ${CMAKE_BINARY_DIR}
+    ${Boost_INCLUDE_DIR}
+)
+target_link_libraries(serialization_lib PRIVATE
+    ${Boost_LIBRARIES}
+)
+
+
 add_executable(${PROJECT_NAME}
     "main.cpp"
     "Queue.hpp"
@@ -36,6 +53,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${CMAKE_THREAD_LIBS_INIT}
     ${Boost_LIBRARIES}
+    serialization_lib
 )
 
 
@@ -109,6 +127,7 @@ if(WITH_GTEST)
         ${GTEST_BOTH_LIBRARIES}
         ${CMAKE_THREAD_LIBS_INIT}
         ${Boost_LIBRARIES}
+        serialization_lib
     )
 endif()
 

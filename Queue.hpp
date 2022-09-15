@@ -15,6 +15,7 @@
 #include <boost/archive/xml_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
+#include <boost/serialization/access.hpp>
 #include <boost/serialization/deque.hpp>
 
 namespace threadsafe_containers
@@ -35,31 +36,7 @@ public:
     Queue& operator=(const Queue&) = delete;
     Queue& operator=(Queue&&) = delete;
 
-    Queue(const fs::path& path):
-        m_path{path}
-    {
-        if(!fs::exists(m_path))
-            return;
-        std::ifstream stream(m_path.string());
-        boost::archive::text_iarchive ar(stream);
-        ar >> *this;
-    }
-
-    ~Queue()
-    {
-        if(m_path.empty())
-            return;
-        {
-            std::ofstream stream(m_path.string());
-            boost::archive::text_oarchive ar(stream);
-            ar << *this;
-        }
-        {
-            std::ofstream stream(m_path.string() + ".xml");
-            boost::archive::xml_oarchive ar(stream);
-            ar << boost::serialization::make_nvp("queue", *this);
-        }
-    }
+    ~Queue() = default;
 
     /// \brief  Push value into queue
     /// \return False if queue has no space left to push \b v, true otherwise.
@@ -113,7 +90,7 @@ public:
        }
     }
 
-    /// \return True is queue is empty, false otherwise.
+    /// \return True if queue is empty, false otherwise.
     bool empty()
     {
         std::scoped_lock lk {m_mutex};
@@ -194,6 +171,8 @@ private:
     template<class Archive>
     void serialize(Archive& ar, [[maybe_unused]] const unsigned int version)
     {
+        std::scoped_lock lk {m_mutex};
+
         constexpr bool is_text_or_bin_arc {
             std::is_same_v<Archive, boost::archive::text_oarchive> ||
             std::is_same_v<Archive, boost::archive::text_iarchive> ||
@@ -223,7 +202,6 @@ private:
     std::condition_variable m_on_not_empty;
     std::condition_variable m_on_space_available;
     std::mutex m_mutex;
-    fs::path m_path;
 };
 
 }
