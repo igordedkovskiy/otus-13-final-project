@@ -36,18 +36,18 @@ enum class ArchiveType
     XML
 };
 
-template<typename T, ArchiveType ArType> class Serializer2
+template<typename T, ArchiveType ArType> class Serializer
 {
 public:
-    Serializer2() noexcept = default;
+    Serializer() noexcept = default;
 
     /// \throws std::filesystem::filesystem_error, serialization::Exception
-    Serializer2(const fs::path& path)
+    Serializer(const fs::path& path)
     {
         set_file_name(path);
     }
 
-    ~Serializer2() = default;
+    ~Serializer() = default;
 
     /// \throws The same exceptions as std::fstream
     void clear()
@@ -81,7 +81,7 @@ public:
     }
 
     /// \throws The same exceptions as std::fstream
-    Serializer2<T, ArType>& operator<<(const T& q)
+    Serializer<T, ArType>& operator<<(const T& q)
     {
         using stream_t = std::ofstream;
         stream_t stream{m_fname, stream_t::out | stream_t::app};
@@ -105,7 +105,7 @@ public:
     }
 
     /// \throws The same exceptions as std::fstream
-    Serializer2<T, ArType>& operator>>(T& q)
+    Serializer<T, ArType>& operator>>(T& q)
     {
         using stream_t = std::ifstream;
         stream_t stream{m_fname, stream_t::in};

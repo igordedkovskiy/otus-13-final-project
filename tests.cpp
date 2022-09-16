@@ -24,7 +24,7 @@ TEST(TEST_QUEUE, serializer_exceptions)
 
     try
     {
-        Serializer2<queue_t, ArchiveType::TEXT> s{"/temp/qarchive.txt"};
+        Serializer<queue_t, ArchiveType::TEXT> s{"/temp/qarchive.txt"};
     }
     catch(const Exception& e)
     {
@@ -34,7 +34,7 @@ TEST(TEST_QUEUE, serializer_exceptions)
 
     try
     {
-        Serializer2<queue_t, ArchiveType::TEXT> s{"/temp/"};
+        Serializer<queue_t, ArchiveType::TEXT> s{"/temp/"};
     }
     catch(const Exception& e)
     {
@@ -44,7 +44,7 @@ TEST(TEST_QUEUE, serializer_exceptions)
 
     try
     {
-        Serializer2<queue_t, ArchiveType::TEXT> s{fs::current_path()};
+        Serializer<queue_t, ArchiveType::TEXT> s{fs::current_path()};
     }
     catch(const Exception& e)
     {
@@ -168,9 +168,9 @@ TEST(TEST_QUEUE, serialize_queue)
             EXPECT_EQ(*newq_p, *q_p);
         }
     };
-    test(serialization::Serializer2<queue_t, ArchiveType::BINARY>{"qarchive2"});
-    test(serialization::Serializer2<queue_t, ArchiveType::TEXT  >{"qarchive2.txt"});
-    test(serialization::Serializer2<queue_t, ArchiveType::XML   >{"qarchive2.xml"});
+    test(serialization::Serializer<queue_t, ArchiveType::BINARY>{"qarchive2"});
+    test(serialization::Serializer<queue_t, ArchiveType::TEXT  >{"qarchive2.txt"});
+    test(serialization::Serializer<queue_t, ArchiveType::XML   >{"qarchive2.xml"});
 }
 
 
