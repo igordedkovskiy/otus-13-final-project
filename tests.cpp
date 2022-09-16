@@ -14,44 +14,6 @@
 #include "Queue.hpp"
 #include "serialization.hpp"
 
-TEST(TEST_QUEUE, polymorphic_serializer_exceptions)
-{
-    using namespace serialization;
-    using namespace threadsafe_containers;
-    using value_type = int;
-    using queue_t = Queue<value_type>;
-
-    try
-    {
-        TXTSerializer<queue_t> s{"/temp/qarchive.txt"};
-    }
-    catch(const Exception& e)
-    {
-        std::string message {e.what()};
-        EXPECT_EQ(message, std::string{"Nonexistent path"});
-    }
-
-    try
-    {
-        TXTSerializer<queue_t> s{"/temp/"};
-    }
-    catch(const Exception& e)
-    {
-        std::string message {e.what()};
-        EXPECT_EQ(message, std::string{"Path doesn't contain file name"});
-    }
-
-    try
-    {
-        TXTSerializer<queue_t> s{fs::current_path()};
-    }
-    catch(const Exception& e)
-    {
-        std::string message {e.what()};
-        EXPECT_EQ(message, std::string{"Path refers to a directory not a file"});
-    }
-}
-
 
 TEST(TEST_QUEUE, serializer_exceptions)
 {
@@ -168,46 +130,6 @@ TEST(TEST_QUEUE, serialize_queue_simple)
     test(ArchiveType::BINARY, "qarchive1");
     test(ArchiveType::TEXT,   "qarchive1.txt");
     test(ArchiveType::XML,    "qarchive1.xml");
-}
-
-
-TEST(TEST_QUEUE, polymorphic_serialize_queue)
-{
-    namespace fs = std::filesystem;
-    using namespace threadsafe_containers;
-    using value_type = int;
-    using queue_t = Queue<value_type>;
-
-    auto test = [](auto serializer)
-    {
-        queue_t q;
-        q.push(1);
-        q.push(3);
-        q.push(6);
-        q.push(12);
-
-        serializer.clear();
-        serializer << q;
-        EXPECT_FALSE(q.empty());
-        // create newq and load it's value from an archive
-        queue_t newq;
-        serializer >> newq;
-        // compare newq against q
-        EXPECT_EQ(newq, q);
-        EXPECT_FALSE(q.empty());
-        EXPECT_FALSE(newq.empty());
-        while(!newq.empty())
-        {
-            auto newq_p = newq.pop();
-            auto q_p = q.pop();
-            //std::cout << "newq.top: " << std::setw(3) << *newq_p
-            //          << "; q.top: " << std::setw(3) << *q_p << '\n';
-            EXPECT_EQ(*newq_p, *q_p);
-        }
-    };
-    test(serialization::BINSerializer<queue_t>{"qarchive2"});
-    test(serialization::TXTSerializer<queue_t>{"qarchive2.txt"});
-    test(serialization::XMLSerializer<queue_t>{"qarchive2.xml"});
 }
 
 
