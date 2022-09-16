@@ -20,6 +20,7 @@ TEST(TEST_QUEUE, serializer_exceptions)
     using namespace threadsafe_containers;
     using value_type = int;
     using queue_t = Queue<value_type>;
+
     try
     {
         TXTSerializer<queue_t> s{"/temp/qarchive.txt"};

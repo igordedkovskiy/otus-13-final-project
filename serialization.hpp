@@ -31,11 +31,15 @@ private:
 template<typename T> class Serializer
 {
 public:
+    Serializer() noexcept = default;
+
     /// \throws std::filesystem::filesystem_error, serialization::Exception
     Serializer(const fs::path& path)
     {
         set_file_name(path);
     }
+
+    virtual ~Serializer() = default;
 
     /// \throws The same exceptions as std::fstream
     void clear()
@@ -96,6 +100,7 @@ private:
 template<typename T> class BINSerializer: public Serializer<T>
 {
 public:
+    BINSerializer() noexcept = default;
     BINSerializer(fs::path path): Serializer<T>{path} {}
 
 private:
@@ -115,6 +120,7 @@ private:
 template<typename T> class TXTSerializer: public Serializer<T>
 {
 public:
+    TXTSerializer() noexcept = default;
     TXTSerializer(fs::path path): Serializer<T>{path} {}
 
 private:
@@ -135,6 +141,7 @@ private:
 template<typename T> class XMLSerializer: public Serializer<T>
 {
 public:
+    XMLSerializer() noexcept = default;
     XMLSerializer(fs::path path): Serializer<T>{path} {}
 
 private:
