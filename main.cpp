@@ -68,10 +68,6 @@ int func()
         using cond_cntr_t = std::atomic_llong;
         cond_cntr_t elements_left (num_of_elements);
 
-//        using threads_cntr_t = std::atomic<decltype(num_of_producers)>;
-//        threads_cntr_t producers_left {num_of_producers};
-//        threads_cntr_t consumers_left {num_of_consumers};
-
         using threads_cntr_t = std::atomic<std::size_t>;
         threads_cntr_t producers_cntr {0};
         std::mutex cntr_mutex;
@@ -91,15 +87,10 @@ int func()
                 std::cerr << e.what() << std::endl;
             }
         };
-//        auto consumer = [&elements_left, &consumers_left, &producers_left]
-//        auto consumer = [&consumers_left, &producers_left]
-        //auto consumer = [&consumers_left]
         auto consumer = []([[maybe_unused]] std::stop_token stop_token, queue_t& queue)
         {
             try
             {
-//                while(!queue.empty() || elements_left)
-//                while(!queue.empty() || producers_left)
                 while(!queue.empty())
                 {
                     do
@@ -117,7 +108,6 @@ int func()
                     while(!queue.empty());
                     std::this_thread::sleep_for(milliseconds(10));
                 }
-//                --consumers_left;
             }
             catch(const std::exception& e)
             {
@@ -125,20 +115,13 @@ int func()
             }
         };
 
-        //using threads_cntr_t = producer_consumer::Framework<data_t>::threads_cntr_t;
-        //using threads_cntr_t = std::atomic<std::size_t>;
-        //auto main_cycle = [&elements_left, &consumers_left, &producers_left](queue_t& queue)
-        //auto main_cycle = [&consumers_left, &producers_left](queue_t& queue)
-        //auto main_cycle = [](queue_t& queue, threads_cntr_t& producers_left, threads_cntr_t& consumers_left)
         auto main_cycle = [](queue_t& queue)
         {
             try
             {
                 using namespace std::chrono_literals;
-                //while(!queue.empty() || elements_left || producers_cntr || consumers_cntr)
                 while(!queue.empty())// || producers_left || consumers_left)
                     std::this_thread::sleep_for(10ms);
-                //while(!queue.empty() || elements_left || producers_cntr || consumers_cntr)
                 while(!queue.empty())// || producers_left || consumers_left)
                     std::this_thread::sleep_for(10ms);
             }
