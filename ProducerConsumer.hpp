@@ -22,11 +22,8 @@ template<typename T> class Framework
 public:
     using queue_t = threadsafe_containers::Queue<T>;
 
-    using ProducerT = void(std::stop_token stop_token, queue_t& queue, std::size_t num);
+    using ProducerT = void(std::stop_token stop_token, queue_t& queue);
     using ConsumerT = void(std::stop_token stop_token, queue_t& queue);
-
-    //using threads_cntr_t = std::atomic<std::size_t>;
-    //using MainT = void(queue_t& queue, threads_cntr_t& producers_left, threads_cntr_t& consumers_left);
     using MainT = void(queue_t& queue);
 
 public:
@@ -52,9 +49,9 @@ public:
         threads_cntr_t producers_left {m_num_of_producers};
         threads_cntr_t consumers_left {m_num_of_consumers};
 
-        auto producer_wrapper = [this, &producers_left](std::stop_token stop_token, std::size_t num)
+        auto producer_wrapper = [this, &producers_left](std::stop_token stop_token)
         {
-            m_producer(stop_token, m_queue, num);
+            m_producer(stop_token, m_queue);
             --producers_left;
         };
         auto consumer_wrapper = [this, &consumers_left](std::stop_token stop_token)
@@ -65,8 +62,8 @@ public:
 
         m_producers.reserve(m_num_of_producers);
         for(std::size_t cntr {0}; cntr < m_num_of_producers; ++cntr)
-            //m_producers.emplace_back(m_producer, std::ref(m_queue), cntr);
-            m_producers.emplace_back(producer_wrapper, cntr);
+            //m_producers.emplace_back(m_producer, std::ref(m_queue));
+            m_producers.emplace_back(producer_wrapper);
 
         m_consumers.reserve(m_num_of_consumers);
         for(std::size_t cntr {0}; cntr < m_num_of_consumers; ++cntr)

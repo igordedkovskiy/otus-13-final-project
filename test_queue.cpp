@@ -203,96 +203,90 @@ TEST(TEST_QUEUE, producer_consumer_framework)
         };
 
         const auto ranges {split()};
-        struct PData
-        {
-            PData(all_data_collection_t&& d):
-                data{std::move(d)},
-                free_data(data.size(), true)
-            {}
-            all_data_collection_t data;
-            std::vector<bool> free_data;
-            std::mutex mutex;
-            std::condition_variable cv;
-            bool available {true};
-        } data{make_data(num_of_producers, ranges)};
-
+        const auto data {make_data(num_of_producers, ranges)};
         cond_cntr_t elements_left (num_of_elements);
 
-        struct ProducerExc{};
-
-        auto producer = [&data, &elements_left]
-                ([[maybe_unused]] std::stop_token stop_token, queue_t& queue, std::size_t num)
-        {
-//            auto get_data = [&data]()->data_collection_t&
-//            {
-//                std::unique_lock lk {data.mutex};
-//                data.cv.wait(lk, [&data]{ return data.available; });
-//                data.available = false;
-//                for(std::size_t cntr {0}; cntr < data.data.size(); ++cntr)
-//                {
-//                    if(data.free_data[cntr])
-//                    {
-//                        data.free_data[cntr] = false;
-//                        data.available = true;
-//                        data.cv.notify_all();
-//                        return data.data[cntr];
-//                    }
-//                }
-//                throw ProducerExc{};
-//            };
-
-//            const auto data {get_data()};
-            const auto& d {data.data[num]};
-            for(auto el:d)
-            {
-                queue.wait_if_full_push(el);
-                --elements_left;
-            }
-        };
-        auto consumer = [&elements_left]
+        using threads_cntr_t = std::atomic<std::size_t>;
+        threads_cntr_t producers_cntr {0};
+        std::mutex cntr_mutex;
+        auto producer = [&data, &producers_cntr, &cntr_mutex]
                 ([[maybe_unused]] std::stop_token stop_token, queue_t& queue)
         {
-            while(!queue.empty() || elements_left)
+            try
             {
-                auto el {queue.pop()};
-                if(el)
+                cntr_mutex.lock();
+                const auto& d {data[producers_cntr++]};
+                cntr_mutex.unlock();
+                for(auto el:d)
+                    queue.wait_if_full_push(el);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << std::endl;
+            }
+        };
+        auto consumer = []([[maybe_unused]] std::stop_token stop_token, queue_t& queue)
+        {
+            try
+            {
+                while(!queue.empty())
                 {
-                    std::vector<data_t> v;
-                    const std::size_t N {100000};
-                    v.reserve(N);
-                    for(std::size_t cntr {0}; cntr < N; ++cntr)
-                        v.emplace_back(cntr + *el);
+                    do
+                    {
+                        auto el {queue.pop()};
+                        if(el)
+                        {
+                            std::vector<data_t> v;
+                            constexpr std::size_t N {100000};
+                            v.reserve(N);
+                            for(std::size_t cntr {0}; cntr < N; ++cntr)
+                                v.emplace_back(cntr + *el);
+                        }
+                    }
+                    while(!queue.empty());
+                    std::this_thread::sleep_for(milliseconds(10));
                 }
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << std::endl;
             }
         };
 
-        auto main_cycle = [&elements_left](queue_t& queue)
+        auto main_cycle = [](queue_t& queue)
         {
             using namespace std::chrono_literals;
-            while(!queue.empty() || elements_left)
+            try
             {
-                // sleep
-                // save queue (serialize)
-                // etc.
-
-                std::this_thread::sleep_for(10ms);
-                //auto t {system_clock::to_time_t(system_clock::now())};
-                //auto now {*std::localtime(&t)};
-                //std::string time
-                //{
-                //    std::to_string(now.tm_year + 1900) + '.' +
-                //            std::to_string(now.tm_mon + 1) + '.' +
-                //            std::to_string(now.tm_mday) + '-' +
-                //            std::to_string(now.tm_hour) + '.' +
-                //            std::to_string(now.tm_min) + '.' +
-                //            std::to_string(now.tm_sec)
-                //};
-                //using namespace serialization;
-                //Serializer<queue_t, ArchiveType::TEXT> s{"qarchive-" + time + ".txt"};
-                //s << queue;
+                using namespace std::chrono_literals;
+                while(!queue.empty())
+                {
+                    // sleep
+                    // save queue (serialize)
+                    // etc.
+                    std::this_thread::sleep_for(10ms);
+                    //auto t {system_clock::to_time_t(system_clock::now())};
+                    //auto now {*std::localtime(&t)};
+                    //std::string time
+                    //{
+                    //    std::to_string(now.tm_year + 1900) + '.' +
+                    //            std::to_string(now.tm_mon + 1) + '.' +
+                    //            std::to_string(now.tm_mday) + '-' +
+                    //            std::to_string(now.tm_hour) + '.' +
+                    //            std::to_string(now.tm_min) + '.' +
+                    //            std::to_string(now.tm_sec)
+                    //};
+                    //using namespace serialization;
+                    //Serializer<queue_t, ArchiveType::TEXT> s{"qarchive-" + time + ".txt"};
+                    //s << queue;
+                }
+                while(!queue.empty())
+                    std::this_thread::sleep_for(10ms);
             }
-            while(!queue.empty() || elements_left)
-                std::this_thread::sleep_for(10ms);
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << std::endl;
+            }
         };
 
         using namespace producer_consumer;
@@ -308,11 +302,6 @@ TEST(TEST_QUEUE, producer_consumer_framework)
         try
         {
             framework.run();
-        }
-        catch(ProducerExc e)
-        {
-            std::cerr << "ProducerExc" << std::endl;
-            queue_empty = false;
         }
         catch(const std::exception& e)
         {

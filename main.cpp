@@ -72,26 +72,23 @@ int func()
 //        threads_cntr_t producers_left {num_of_producers};
 //        threads_cntr_t consumers_left {num_of_consumers};
 
-        struct ProducerExc{};
-
-        //auto producer = [&data, &elements_left, &producers_cntr]
-        //auto producer = [&data, &producers_left]
-        auto producer = [&data]
-                ([[maybe_unused]] std::stop_token stop_token, queue_t& queue, std::size_t num)
+        using threads_cntr_t = std::atomic<std::size_t>;
+        threads_cntr_t producers_cntr {0};
+        std::mutex cntr_mutex;
+        auto producer = [&data, &producers_cntr, &cntr_mutex]
+                ([[maybe_unused]] std::stop_token stop_token, queue_t& queue)
         {
             try
             {
-                const auto& d {data[num]};
+                cntr_mutex.lock();
+                const auto& d {data[producers_cntr++]};
+                cntr_mutex.unlock();
                 for(auto el:d)
-                {
                     queue.wait_if_full_push(el);
-//                    --elements_left;
-                }
-//                --producers_left;
             }
             catch(const std::exception& e)
             {
-                std::cerr << "Caught1 " << e.what() << std::endl;
+                std::cerr << e.what() << std::endl;
             }
         };
 //        auto consumer = [&elements_left, &consumers_left, &producers_left]
@@ -164,11 +161,6 @@ int func()
         try
         {
             framework.run();
-        }
-        catch(ProducerExc e)
-        {
-            std::cerr << "ProducerExc" << std::endl;
-            queue_empty = false;
         }
         catch(const std::exception& e)
         {
