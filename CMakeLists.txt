@@ -41,6 +41,8 @@ target_link_libraries(serialization_lib PRIVATE
 add_executable(${PROJECT_NAME}
     "main.cpp"
     "Queue.hpp"
+    "ProducerConsumer.hpp"
+    "ProducerConsumer.cpp"
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 20
@@ -104,23 +106,19 @@ if(WITH_GTEST)
         add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/googletest" "googletest")
         message(STATUS "Add googletest subdirectory")
     endif()
-    add_executable(tests "tests.cpp")
-
+    add_executable(tests "tests.cpp" "test_serialization.cpp" "test_queue.cpp")
     target_include_directories(tests PRIVATE
         ${GTEST_INCLUDE_DIRS}
 #        "${CMAKE_CURRENT_SOURCE_DIR}/src"
     )
-
     set_target_properties(tests PROPERTIES
         CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON
     )
-
-#    target_compile_definitions(test_print_ip PRIVATE
+#    target_compile_definitions(tests PRIVATE
 #        $<$<CONFIG:Debug>:DEBUG_VER>
 #        $<$<CONFIG:Release>:RELEASE_VER>
 #    )
-
     target_link_libraries(tests PRIVATE
         gtest
         gtest_main

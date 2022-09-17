@@ -27,6 +27,7 @@ namespace fs = std::filesystem;
 template<typename T, std::size_t SIZE = 10> class Queue
 {
 public:
+    using value_type = T;
     using pointer_type = std::unique_ptr<T>;
 
     Queue() = default;

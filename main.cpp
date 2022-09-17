@@ -1,4 +1,4 @@
-// homework #11: mapreduce prefix
+// Final project: threadsafe queue for Producer-Consumer
 
 #include <iostream>
 #include <type_traits>
@@ -10,63 +10,219 @@
 /// \brief Enables std::pair serialization
 #include <boost/serialization/utility.hpp>
 
-//#include "input.hpp"
 #include "Queue.hpp"
+#include "ProducerConsumer.hpp"
 
-struct Exception: public std::exception
+int func()
 {
-    Exception(std::string s): m_m(std::move(s)) {}
-    const char* what() const noexcept override { return m_m.c_str(); }
-    std::string m_m;
-};
-
-//int main(int argc, const char* argv[])
-int main()
-{
-    std::locale::global(std::locale(""));
     try
     {
-//        auto [opts, res] {parse_cmd_line(argc, argv)};
-//        if(!res)
-//            return 0;
-        using type = std::pair<std::size_t, int>;
+    const auto num_of_cores {std::thread::hardware_concurrency()};
+    std::cout << "number of cores is " << num_of_cores << std::endl;
+    if(num_of_cores == 1)
+        return 0;
 
-        auto push = [](threadsafe_containers::Queue<type>& q, std::mutex& m, std::size_t n)
+    using namespace std::chrono;
+    using namespace threadsafe_containers;
+    using clock = system_clock;
+    using data_t = std::uint64_t;
+    using data_collection_t = std::vector<data_t>;
+    using all_data_collection_t = std::vector<data_collection_t>;
+    using num_of_elements_t = std::size_t;
+    using ranges_t = std::vector<num_of_elements_t>;
+    using queue_t = Queue<data_t>;
+
+    auto make_data = [](std::size_t num_of_producers, const ranges_t& ranges)
+    {
+        all_data_collection_t data;
+        data.reserve(num_of_producers);
+        for(auto num_of_elements:ranges)
         {
-            //const auto th_id {std::hash<std::thread::id>()(std::this_thread::get_id())};
-            for(std::size_t cntr = 0; ; ++cntr)
+            data_collection_t element;
+            element.reserve(num_of_elements);
+            for(std::size_t cntr {0}; cntr < num_of_elements; ++cntr)
+                element.emplace_back(cntr * 13);
+            data.emplace_back(std::move(element));
+        }
+        return data;
+    };
+
+    auto run = [&make_data]
+            (std::size_t num_of_producers, std::size_t num_of_consumers, std::size_t num_of_elements)
+    {
+        auto split = [&num_of_elements, &num_of_producers]()
+        {
+            if(num_of_producers == 1)
+                return ranges_t(1, num_of_elements);
+            const auto size {num_of_elements / num_of_producers};
+            ranges_t ranges;
+            ranges.reserve(num_of_producers);
+            for(std::size_t cntr {0}; cntr < num_of_producers - 1; ++cntr)
+                ranges.push_back(size);
+            ranges.push_back(num_of_elements - size * (num_of_producers - 1));
+            return ranges;
+        };
+
+        const auto ranges {split()};
+        const auto data{make_data(num_of_producers, ranges)};
+        using cond_cntr_t = std::atomic_llong;
+        cond_cntr_t elements_left (num_of_elements);
+
+//        using threads_cntr_t = std::atomic<decltype(num_of_producers)>;
+//        threads_cntr_t producers_left {num_of_producers};
+//        threads_cntr_t consumers_left {num_of_consumers};
+
+        struct ProducerExc{};
+
+        //auto producer = [&data, &elements_left, &producers_cntr]
+        //auto producer = [&data, &producers_left]
+        auto producer = [&data]
+                ([[maybe_unused]] std::stop_token stop_token, queue_t& queue, std::size_t num)
+        {
+            try
             {
-                q.wait_if_full_push(std::make_pair(n, cntr));
-                std::scoped_lock lk{m};
-                std::cout << "push " << n << ':' << cntr << " size: " << q.size() << '\n';
+                const auto& d {data[num]};
+                for(auto el:d)
+                {
+                    queue.wait_if_full_push(el);
+//                    --elements_left;
+                }
+//                --producers_left;
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << "Caught1 " << e.what() << std::endl;
             }
         };
-        auto pull = [](threadsafe_containers::Queue<type>& q, std::mutex& m)
+//        auto consumer = [&elements_left, &consumers_left, &producers_left]
+//        auto consumer = [&consumers_left, &producers_left]
+        //auto consumer = [&consumers_left]
+        auto consumer = []([[maybe_unused]] std::stop_token stop_token, queue_t& queue)
         {
-            while(true)
+            try
             {
-                auto p {q.wait_until_empty_pop()};
-                std::scoped_lock lk{m};
-                std::cout << "pull " << p->first << ':' << p->second << " size: " << q.size() << '\n';
+//                while(!queue.empty() || elements_left)
+//                while(!queue.empty() || producers_left)
+                while(!queue.empty())
+                {
+                    do
+                    {
+                        auto el {queue.pop()};
+                        if(el)
+                        {
+                            std::vector<data_t> v;
+                            constexpr std::size_t N {100000};
+                            v.reserve(N);
+                            for(std::size_t cntr {0}; cntr < N; ++cntr)
+                                v.emplace_back(cntr + *el);
+                        }
+                    }
+                    while(!queue.empty());
+                    std::this_thread::sleep_for(milliseconds(10));
+                }
+//                --consumers_left;
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << "Caught2 " << e.what() << std::endl;
             }
         };
 
-        threadsafe_containers::Queue<type> q;
-        std::mutex m;
-        std::thread producer1{push, std::ref(q), std::ref(m), 1};
-        std::thread producer2{push, std::ref(q), std::ref(m), 2};
-        std::thread producer3{push, std::ref(q), std::ref(m), 3};
-        std::thread consumer1{pull, std::ref(q), std::ref(m)};
-        producer1.detach();
-        producer2.detach();
-        producer3.detach();
-        consumer1.detach();
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(5ms);
+        //using threads_cntr_t = producer_consumer::Framework<data_t>::threads_cntr_t;
+        //using threads_cntr_t = std::atomic<std::size_t>;
+        //auto main_cycle = [&elements_left, &consumers_left, &producers_left](queue_t& queue)
+        //auto main_cycle = [&consumers_left, &producers_left](queue_t& queue)
+        //auto main_cycle = [](queue_t& queue, threads_cntr_t& producers_left, threads_cntr_t& consumers_left)
+        auto main_cycle = [](queue_t& queue)
+        {
+            try
+            {
+                using namespace std::chrono_literals;
+                //while(!queue.empty() || elements_left || producers_cntr || consumers_cntr)
+                while(!queue.empty())// || producers_left || consumers_left)
+                    std::this_thread::sleep_for(10ms);
+                //while(!queue.empty() || elements_left || producers_cntr || consumers_cntr)
+                while(!queue.empty())// || producers_left || consumers_left)
+                    std::this_thread::sleep_for(10ms);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << "Caught3 " << e.what() << std::endl;
+            }
+        };
+
+        using namespace producer_consumer;
+        Framework<data_t> framework
+        {
+            producer, num_of_producers,
+            consumer, num_of_consumers,
+            main_cycle
+        };
+
+        bool queue_empty {true};
+        const auto start {clock::now()};
+        try
+        {
+            framework.run();
+        }
+        catch(ProducerExc e)
+        {
+            std::cerr << "ProducerExc" << std::endl;
+            queue_empty = false;
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << "Caught4 " << e.what() << std::endl;
+            queue_empty = false;
+        }
+        return std::make_pair(duration_cast<milliseconds>(clock::now() - start).count(), queue_empty);
+    };
+
+//    try
+//    {
+        constexpr std::size_t num_of_elements {1000};
+        /// \note one producers / consumers
+        { [[maybe_unused]] auto v = run(1, 1, num_of_elements); }
+        const auto [single_duration, result] {run(1, 1, num_of_elements)};
+        assert(result);
+
+        for(std::size_t mfactor {1}; mfactor < 6; ++mfactor)
+        {
+            /// \note multiple producers / consumers. Number of consumers = number of producers.
+            const std::size_t num_of_producers { static_cast<std::remove_cv_t<decltype(num_of_producers)>>
+                (num_of_cores > 2 ? 0.5 * num_of_cores * mfactor: num_of_cores * mfactor)};
+            const auto [multiple_duration, result2]{run(num_of_producers, num_of_producers, num_of_elements)};
+            assert(result2);
+
+            std::cout << "duration single|multiple (ms): "
+                      << single_duration << '|' << multiple_duration
+                      << "\tnumber of producers|consumers: "
+                      << num_of_producers << '|' << num_of_producers
+                      << std::endl;
+            assert(single_duration >= multiple_duration);
+        }
     }
     catch(const std::exception& e)
     {
-        std::cerr << e.what() << std::endl;
+        std::cerr << "Caught5 " << e.what() << std::endl;
+    }
+    return 0;
+}
+
+int main()
+{
+    try
+    {
+        for(std::size_t cntr {0}; cntr < 100; ++cntr)
+        {
+            std::cout << "cycle: " << cntr << std::endl;
+            func();
+            std::cout << std::endl;
+        }
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "Caught6 " << e.what() << std::endl;
     }
     return 0;
 }
