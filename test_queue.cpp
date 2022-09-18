@@ -115,7 +115,8 @@ TEST(TEST_QUEUE, producer_consumer)
                         }
                     }
                     while(!queue.empty());
-                    std::this_thread::sleep_for(milliseconds(10));
+                    using namespace std::chrono_literals;
+                    std::this_thread::sleep_for(10ms);
                 }
             }
             catch(const std::exception& e)
@@ -177,7 +178,7 @@ TEST(TEST_QUEUE, producer_consumer)
                 std::this_thread::sleep_for(10ms);
 
             while(consumers_left || producers_left)
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                std::this_thread::sleep_for(10ms);
         }
 
         return std::make_pair(duration_cast<milliseconds>(clock::now() - start).count(), queue.empty());
@@ -304,7 +305,8 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                         }
                     }
                     while(!queue.empty());
-                    std::this_thread::sleep_for(milliseconds(10));
+                    using namespace std::chrono_literals;
+                    std::this_thread::sleep_for(10ms);
                 }
             }
             catch(const std::exception& e)
