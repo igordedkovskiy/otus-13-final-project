@@ -11,7 +11,7 @@
 #include "serialization.hpp"
 #include "ProducerConsumer.hpp"
 
-/*
+
 /// \brief Compare execution time in two cases. First is one producer, one consumer.
 ///        Second is multiple producers, multiple consumers.
 TEST(TEST_QUEUE, producer_consumer)
@@ -174,9 +174,11 @@ TEST(TEST_QUEUE, producer_consumer)
                 //Serializer<queue_t, ArchiveType::TEXT> s{"qarchive-" + time + ".txt"};
                 //s << queue;
             }
+            // wait until queue is empty
             while(!queue.empty())
                 std::this_thread::sleep_for(10ms);
 
+            // wait until consumers and producers finish their work
             while(consumers_left || producers_left)
                 std::this_thread::sleep_for(10ms);
         }
@@ -212,7 +214,7 @@ TEST(TEST_QUEUE, producer_consumer)
         std::cerr << e.what() << std::endl;
     }
 }
-*/
+
 
 TEST(TEST_QUEUE, producer_consumer_framework)
 {
@@ -320,6 +322,7 @@ TEST(TEST_QUEUE, producer_consumer_framework)
             try
             {
                 using namespace std::chrono_literals;
+                // wait until queue is empty
                 while(!queue.empty())
                 {
                     // sleep
@@ -341,6 +344,7 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                     //Serializer<queue_t, ArchiveType::TEXT> s{"qarchive-" + time + ".txt"};
                     //s << queue;
                 }
+                // just to make sure...
                 while(!queue.empty())
                     std::this_thread::sleep_for(10ms);
             }
