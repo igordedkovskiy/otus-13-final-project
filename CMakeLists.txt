@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.2)
 set(PATCH_VERSION "2" CACHE INTERNAL "Patch version")
 set(PROJECT_VERSION 0.0.${PATCH_VERSION})
 
-project(threadsafe_queue VERSION ${PROJECT_VERSION})
+project(producer-consumer VERSION ${PROJECT_VERSION})
 
 option(WITH_GTEST "Whether to build google test" ON)
 option(GIT_SUBMODULE "Check submodules during build" ON)

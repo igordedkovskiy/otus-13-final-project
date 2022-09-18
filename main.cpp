@@ -15,8 +15,6 @@
 
 int func()
 {
-    try
-    {
     const auto num_of_cores {std::thread::hardware_concurrency()};
     std::cout << "number of cores is " << num_of_cores << std::endl;
     if(num_of_cores == 1)
@@ -28,6 +26,7 @@ int func()
     using data_t = std::uint64_t;
     using data_collection_t = std::vector<data_t>;
     using all_data_collection_t = std::vector<data_collection_t>;
+    using cond_cntr_t = std::atomic_llong;
     using num_of_elements_t = std::size_t;
     using ranges_t = std::vector<num_of_elements_t>;
     using queue_t = Queue<data_t>;
@@ -64,8 +63,7 @@ int func()
         };
 
         const auto ranges {split()};
-        const auto data{make_data(num_of_producers, ranges)};
-        using cond_cntr_t = std::atomic_llong;
+        const auto data {make_data(num_of_producers, ranges)};
         cond_cntr_t elements_left (num_of_elements);
 
         using threads_cntr_t = std::atomic<std::size_t>;
@@ -80,7 +78,11 @@ int func()
                 const auto& d {data[producers_cntr++]};
                 cntr_mutex.unlock();
                 for(auto el:d)
+                {
                     queue.wait_if_full_push(el);
+                    if(stop_token.stop_requested())
+                        break;
+                }
             }
             catch(const std::exception& e)
             {
@@ -91,7 +93,7 @@ int func()
         {
             try
             {
-                while(!queue.empty())
+                while(!queue.empty() && !stop_token.stop_requested())
                 {
                     do
                     {
@@ -105,13 +107,14 @@ int func()
                                 v.emplace_back(cntr + *el);
                         }
                     }
-                    while(!queue.empty());
-                    std::this_thread::sleep_for(milliseconds(10));
+                    while(!queue.empty() && !stop_token.stop_requested());
+                    using namespace std::chrono_literals;
+                    std::this_thread::sleep_for(10ms);
                 }
             }
             catch(const std::exception& e)
             {
-                std::cerr << "Caught2 " << e.what() << std::endl;
+                std::cerr << e.what() << std::endl;
             }
         };
 
@@ -120,14 +123,35 @@ int func()
             try
             {
                 using namespace std::chrono_literals;
-                while(!queue.empty())// || producers_left || consumers_left)
+                // wait until queue is empty
+                while(!queue.empty())
+                {
+                    // sleep
+                    // save queue (serialize)
+                    // etc.
                     std::this_thread::sleep_for(10ms);
-                while(!queue.empty())// || producers_left || consumers_left)
+                    //auto t {system_clock::to_time_t(system_clock::now())};
+                    //auto now {*std::localtime(&t)};
+                    //std::string time
+                    //{
+                    //    std::to_string(now.tm_year + 1900) + '.' +
+                    //            std::to_string(now.tm_mon + 1) + '.' +
+                    //            std::to_string(now.tm_mday) + '-' +
+                    //            std::to_string(now.tm_hour) + '.' +
+                    //            std::to_string(now.tm_min) + '.' +
+                    //            std::to_string(now.tm_sec)
+                    //};
+                    //using namespace serialization;
+                    //Serializer<queue_t, ArchiveType::TEXT> s{"qarchive-" + time + ".txt"};
+                    //s << queue;
+                }
+                // just to make sure...
+                while(!queue.empty())
                     std::this_thread::sleep_for(10ms);
             }
             catch(const std::exception& e)
             {
-                std::cerr << "Caught3 " << e.what() << std::endl;
+                std::cerr << e.what() << std::endl;
             }
         };
 
@@ -147,17 +171,16 @@ int func()
         }
         catch(const std::exception& e)
         {
-            std::cerr << "Caught4 " << e.what() << std::endl;
+            std::cerr << e.what() << std::endl;
             queue_empty = false;
         }
         return std::make_pair(duration_cast<milliseconds>(clock::now() - start).count(), queue_empty);
     };
 
-//    try
-//    {
+    try
+    {
         constexpr std::size_t num_of_elements {1000};
         /// \note one producers / consumers
-        { [[maybe_unused]] auto v = run(1, 1, num_of_elements); }
         const auto [single_duration, result] {run(1, 1, num_of_elements)};
         assert(result);
 
@@ -179,7 +202,7 @@ int func()
     }
     catch(const std::exception& e)
     {
-        std::cerr << "Caught5 " << e.what() << std::endl;
+        std::cerr << e.what() << std::endl;
     }
     return 0;
 }
@@ -188,7 +211,7 @@ int main()
 {
     try
     {
-        for(std::size_t cntr {0}; cntr < 100; ++cntr)
+        for(std::size_t cntr {0}; cntr < 20; ++cntr)
         {
             std::cout << "cycle: " << cntr << std::endl;
             func();

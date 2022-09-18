@@ -73,7 +73,7 @@ TEST(TEST_QUEUE, producer_consumer)
         std::size_t producers_cntr {0};
         std::mutex cntr_mutex;
         auto producer = [&data, &producers_cntr, &cntr_mutex, &producers_left]
-                (queue_t& queue)
+                ([[maybe_unused]] std::stop_token stop_token, queue_t& queue)
         {
             try
             {
@@ -87,7 +87,11 @@ TEST(TEST_QUEUE, producer_consumer)
 
                 const auto d {get()};
                 for(auto el:d)
+                {
                     queue.wait_if_full_push(el);
+                    if(stop_token.stop_requested())
+                        break;
+                }
             }
             catch(const std::exception& e)
             {
@@ -96,11 +100,12 @@ TEST(TEST_QUEUE, producer_consumer)
             --producers_left;
         };
 
-        auto consumer = [&consumers_left](queue_t& queue)
+        auto consumer = [&consumers_left]
+                ([[maybe_unused]] std::stop_token stop_token, queue_t& queue)
         {
             try
             {
-                while(!queue.empty())
+                while(!queue.empty() && !stop_token.stop_requested())
                 {
                     do
                     {
@@ -114,7 +119,7 @@ TEST(TEST_QUEUE, producer_consumer)
                                 v.emplace_back(cntr + *el);
                         }
                     }
-                    while(!queue.empty());
+                    while(!queue.empty() && !stop_token.stop_requested());
                     using namespace std::chrono_literals;
                     std::this_thread::sleep_for(10ms);
                 }
@@ -139,15 +144,15 @@ TEST(TEST_QUEUE, producer_consumer)
         for(std::size_t cntr {0}; cntr < num_of_consumers; ++cntr)
             consumers.emplace_back(consumer, std::ref(queue));
 
-        for(auto& cons:consumers)
-        {
-            if(cons.joinable())
-                cons.detach();
-        }
         for(auto& prod:producers)
         {
             if(prod.joinable())
                 prod.detach();
+        }
+        for(auto& cons:consumers)
+        {
+            if(cons.joinable())
+                cons.detach();
         }
 
         // main thread
@@ -281,7 +286,11 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                 const auto& d {data[producers_cntr++]};
                 cntr_mutex.unlock();
                 for(auto el:d)
+                {
                     queue.wait_if_full_push(el);
+                    if(stop_token.stop_requested())
+                        break;
+                }
             }
             catch(const std::exception& e)
             {
@@ -292,7 +301,7 @@ TEST(TEST_QUEUE, producer_consumer_framework)
         {
             try
             {
-                while(!queue.empty())
+                while(!queue.empty() && !stop_token.stop_requested())
                 {
                     do
                     {
@@ -306,7 +315,7 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                                 v.emplace_back(cntr + *el);
                         }
                     }
-                    while(!queue.empty());
+                    while(!queue.empty() && !stop_token.stop_requested());
                     using namespace std::chrono_literals;
                     std::this_thread::sleep_for(10ms);
                 }
