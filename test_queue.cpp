@@ -11,7 +11,7 @@
 #include "serialization.hpp"
 #include "ProducerConsumer.hpp"
 
-/*
+
 /// \brief Compare execution time in two cases. First is one producer, one consumer.
 ///        Second is multiple producers, multiple consumers.
 TEST(TEST_QUEUE, producer_consumer)
@@ -214,7 +214,7 @@ TEST(TEST_QUEUE, producer_consumer)
         std::cerr << e.what() << std::endl;
     }
 }
-*/
+
 
 TEST(TEST_QUEUE, producer_consumer_framework)
 {
