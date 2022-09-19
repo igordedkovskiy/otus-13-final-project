@@ -76,8 +76,8 @@ TEST(TEST_QUEUE, producer_consumer)
                 //([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
                 (queue_t& queue)
         {
-            try
-            {
+//            try
+//            {
                 auto get = [&data, &producers_cntr, &cntr_mutex]()
                 {
                     std::scoped_lock lk {cntr_mutex};
@@ -93,11 +93,11 @@ TEST(TEST_QUEUE, producer_consumer)
                     //if(stoptoken.stop_requested())
                     //    break;
                 }
-            }
-            catch(const std::exception& e)
-            {
-                std::cerr << e.what() << std::endl;
-            }
+//            }
+//            catch(const std::exception& e)
+//            {
+//                std::cerr << e.what() << std::endl;
+//            }
             --producers_left;
         };
 
@@ -105,8 +105,8 @@ TEST(TEST_QUEUE, producer_consumer)
                 //([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
                 (queue_t& queue)
         {
-            try
-            {
+//            try
+//            {
                 while(!queue.empty())// && !stoptoken.stop_requested())
                 {
                     do
@@ -127,11 +127,11 @@ TEST(TEST_QUEUE, producer_consumer)
                     using namespace std::chrono_literals;
                     std::this_thread::sleep_for(10ms);
                 }
-            }
-            catch(const std::exception& e)
-            {
-                std::cerr << e.what() << std::endl;
-            }
+//            }
+//            catch(const std::exception& e)
+//            {
+//                std::cerr << e.what() << std::endl;
+//            }
             --consumers_left;
         };
 
@@ -142,20 +142,21 @@ TEST(TEST_QUEUE, producer_consumer)
         const auto start {clock::now()};
         for(std::size_t cntr {0}; cntr < num_of_producers; ++cntr)
             producers.emplace_back(producer, std::ref(queue));
-        for(auto& prod:producers)
-        {
-            if(prod.joinable())
-                prod.detach();
-        }
 
         std::vector<std::thread> consumers;
         consumers.reserve(num_of_consumers);
         for(std::size_t cntr {0}; cntr < num_of_consumers; ++cntr)
             consumers.emplace_back(consumer, std::ref(queue));
+
+        for(auto& prod:producers)
+        {
+            if(prod.joinable())
+                prod.join();
+        }
         for(auto& cons:consumers)
         {
             if(cons.joinable())
-                cons.detach();
+                cons.join();
         }
 
         // main thread
@@ -189,42 +190,41 @@ TEST(TEST_QUEUE, producer_consumer)
                 //    throw Exception{};
                 std::this_thread::sleep_for(10ms);
             }
-
             // wait until consumers and producers finish their work
             while(consumers_left || producers_left)
                 std::this_thread::sleep_for(10ms);
         }
-
         return std::make_pair(duration_cast<milliseconds>(clock::now() - start).count(), queue.empty());
     };
 
-    try
+    for(std::size_t cntr {0}; cntr < 6; ++cntr)
     {
-        constexpr std::size_t num_of_elements {1000};
-        /// \note one producers / consumers
-        const auto [single_duration, result] {run(1, 1, num_of_elements)};
-        ASSERT_TRUE(result);
-
-        for(std::size_t mfactor {1}; mfactor < 6; ++mfactor)
+        std::cout << "\ncycle: " << cntr << std::endl;
+        try
         {
-            /// \note multiple producers / consumers. Number of consumers = number of producers.
-            const std::size_t num_of_producers { static_cast<std::remove_cv_t<decltype(num_of_producers)>>
-                (num_of_cores > 2 ? 0.5 * num_of_cores * mfactor: num_of_cores * mfactor)};
-            const auto [multiple_duration, result2]{run(num_of_producers, num_of_producers, num_of_elements)};
-            ASSERT_TRUE(result2);
-
-            std::cout << "duration single|multiple (ms): "
-                      << single_duration << '|' << multiple_duration
-                      << "\tnumber of producers|consumers: "
-                      << num_of_producers << '|' << num_of_producers
-                      << std::endl;
-            EXPECT_GE(single_duration, multiple_duration);
+            constexpr std::size_t num_of_elements {1000};
+            /// \note one producers / consumers
+            const auto [single_duration, result] {run(1, 1, num_of_elements)};
+            ASSERT_TRUE(result);
+            for(std::size_t mfactor {1}; mfactor < 6; ++mfactor)
+            {
+                /// \note multiple producers / consumers. Number of consumers = number of producers.
+                const std::size_t num_of_producers { static_cast<std::remove_cv_t<decltype(num_of_producers)>>
+                    (num_of_cores > 2 ? 0.5 * num_of_cores * mfactor: num_of_cores * mfactor)};
+                const auto [multiple_duration, result2]{run(num_of_producers, num_of_producers, num_of_elements)};
+                ASSERT_TRUE(result2);
+                std::cout << "duration single|multiple (ms): "
+                          << single_duration << '|' << multiple_duration
+                          << "\tnumber of producers|consumers: "
+                          << num_of_producers << '|' << num_of_producers
+                          << std::endl;
+                EXPECT_GE(single_duration, multiple_duration);
+            }
         }
-
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr << e.what() << std::endl;
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << std::endl;
+        }
     }
 }
 
@@ -426,3 +426,9 @@ TEST(TEST_QUEUE, producer_consumer_framework)
     }
 }
 */
+
+int main(int argc, char** argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}

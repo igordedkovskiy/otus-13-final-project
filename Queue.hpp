@@ -41,19 +41,21 @@ public:
 
     void notify_on_not_empty()
     {
-        if(m_queue.size() == 1)
+        //if(m_queue.size() == 1)
+        if(m_queue.size())
             m_on_not_empty.notify_all();
     }
 
     void notify_on_space_available()
     {
-        if(m_queue.size() == SIZE - 1)
+        //if(m_queue.size() == SIZE - 1)
+        if(m_queue.size() < SIZE)
             m_on_space_available.notify_all();
     }
 
     /// \brief  Push value into queue
     /// \return False if queue has no space left to push \b v, true otherwise.
-    bool push(T v)
+    [[nodiscard]] bool push(T v)
     {
         std::scoped_lock lk {m_mutex};
         if(full_nonblocking())
@@ -66,7 +68,7 @@ public:
     /// \brief  Dequeue element and place it's value into \b v.
     /// \return False if queue is empty, \b v keeps it's value.
     ///         True otherwise, \b v contains dequeued value.
-    bool pop(T& v)
+    [[nodiscard]] bool pop(T& v)
     {
         std::scoped_lock lk {m_mutex};
         if(m_queue.empty())
@@ -79,7 +81,7 @@ public:
 
     /// \brief  Dequeue element and return it's value.
     /// \return nullptr if queue is empty, dequeued value otherwise.
-    pointer_type pop()
+    [[nodiscard]] pointer_type pop()
     {
         std::scoped_lock lk {m_mutex};
         if(m_queue.empty())
@@ -94,25 +96,27 @@ public:
     void wait_until_empty()
     {
         std::unique_lock lk {m_mutex};
-        m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
+        while(m_queue.empty())
+            m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
     }
 
     /// \brief Wait until queue is full.
     void wait_until_full()
     {
         std::unique_lock lk {m_mutex};
-        m_on_space_available.wait(lk, [this]{ return !full_nonblocking(); });
+        while(full_nonblocking())
+            m_on_space_available.wait(lk, [this]{ return !full_nonblocking(); });
     }
 
     /// \return True if queue is empty, false otherwise.
-    bool empty() const
+    [[nodiscard]] bool empty() const
     {
         std::scoped_lock lk {m_mutex};
         return m_queue.empty();
     }
 
     /// \return True if queue is false, false otherwise.
-    bool full() const
+    [[nodiscard]] bool full() const
     {
         std::scoped_lock lk {m_mutex};
         return full_nonblocking();
@@ -130,7 +134,7 @@ public:
         // Overload with predicate may be used to ignore spurious awakenings.
         while(full_nonblocking())
             m_on_space_available.wait(lk, [this]{ return !full_nonblocking(); });
-//        m_on_space_available.wait(lk, [this]{ return m_queue.size() < SIZE; });
+//            m_on_space_available.wait(lk, [this]{ return m_queue.size() < SIZE; });
         m_queue.emplace_back(std::move(v));
         notify_on_not_empty();
     }
@@ -139,14 +143,15 @@ public:
     void wait_and_pop(T& v)
     {
         std::unique_lock lk {m_mutex};
-        m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
+        while(m_queue.empty())
+            m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
         v = std::move(m_queue.front());
         m_queue.pop_front();
         notify_on_space_available();
     }
 
     /// \brief Wait until queue is empty, dequeue element and return it's value.
-    pointer_type wait_and_pop()
+    [[nodiscard]] pointer_type wait_and_pop()
     {
         std::unique_lock lk {m_mutex};
         while(m_queue.empty())
@@ -163,23 +168,23 @@ public:
         m_queue.clear();
     }
 
-    std::size_t size() const noexcept
+    [[nodiscard]] std::size_t size() const noexcept
     {
         return m_queue.size();
     }
 
-    constexpr std::size_t max_size() const noexcept
+    [[nodiscard]] constexpr std::size_t max_size() const noexcept
     {
         return SIZE;
     }
 
-    friend bool operator==(const Queue& l, const Queue& r)
+    [[nodiscard]] friend bool operator==(const Queue& l, const Queue& r)
     {
         return l.m_queue == r.m_queue;
     }
 
 private:
-    bool full_nonblocking() const noexcept
+    [[nodiscard]] bool full_nonblocking() const noexcept
     {
         return !(m_queue.size() < SIZE);
     }

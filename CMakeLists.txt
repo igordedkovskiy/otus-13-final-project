@@ -106,7 +106,8 @@ if(WITH_GTEST)
         add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/googletest" "googletest")
         message(STATUS "Add googletest subdirectory")
     endif()
-    add_executable(tests "tests.cpp" "test_serialization.cpp" "test_queue.cpp")
+    #add_executable(tests "tests.cpp" "test_serialization.cpp" "test_queue.cpp")
+    add_executable(tests "test_queue.cpp")
     target_include_directories(tests PRIVATE
         ${GTEST_INCLUDE_DIRS}
 #        "${CMAKE_CURRENT_SOURCE_DIR}/src"
