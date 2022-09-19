@@ -199,7 +199,7 @@ TEST(TEST_QUEUE, producer_consumer)
         /// \note one producers / consumers
         const auto [single_duration, result] {run(1, 1, num_of_elements)};
         ASSERT_TRUE(result);
-/*
+
         for(std::size_t mfactor {1}; mfactor < 6; ++mfactor)
         {
             /// \note multiple producers / consumers. Number of consumers = number of producers.
@@ -215,7 +215,7 @@ TEST(TEST_QUEUE, producer_consumer)
                       << std::endl;
             EXPECT_GE(single_duration, multiple_duration);
         }
-*/
+
     }
     catch(const std::exception& e)
     {
@@ -394,7 +394,7 @@ TEST(TEST_QUEUE, producer_consumer_framework)
         /// \note one producers / consumers
         const auto [single_duration, result] {run(1, 1, num_of_elements)};
         ASSERT_TRUE(result);
-/*
+
         for(std::size_t mfactor {1}; mfactor < 6; ++mfactor)
         {
             /// \note multiple producers / consumers. Number of consumers = number of producers.
@@ -410,7 +410,7 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                       << std::endl;
             EXPECT_GE(single_duration, multiple_duration);
         }
-*/
+
     }
     catch(const std::exception& e)
     {
