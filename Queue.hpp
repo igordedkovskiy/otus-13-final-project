@@ -62,7 +62,7 @@ public:
             return false;
         v = std::move(m_queue.front());
         m_queue.pop_front();
-        if(m_queue.size() == SIZE - 1)
+//        if(m_queue.size() == SIZE - 1)
             m_on_space_available.notify_all();
         return true;
     }
@@ -76,7 +76,7 @@ public:
             return nullptr;
         auto p {std::make_unique<T>(m_queue.front())};
         m_queue.pop_front();
-        if(m_queue.size() == SIZE - 1)
+//        if(m_queue.size() == SIZE - 1)
             m_on_space_available.notify_all();
         return p;
     }
@@ -101,7 +101,7 @@ public:
     /// \brief  Wait if queue is full, push \b v into queue.
     void wait_if_full_push(T v)
     {
-        std::cout << "wait_if_full_push: lock" << std::endl;
+//        std::cout << "wait_if_full_push: lock" << std::endl;
         std::unique_lock lk {m_mutex};
         // condition_variable::wait atomically unlocks lk, blocks the current executing thread,
         // and adds it to the list of threads waiting on *this. The thread will be unblocked
@@ -109,13 +109,13 @@ public:
         // When unblocked, regardless of the reason, lock is reacquired and wait exits.
         // Thus, deadlock is impossible.
         // Overload with predicate may be used to ignore spurious awakenings.
-        std::cout << "wait_if_full_push: wait" << std::endl;
+//        std::cout << "wait_if_full_push: wait" << std::endl;
         m_on_space_available.wait(lk, [this]{ return !full(); });
-        std::cout << "wait_if_full_push: wait end" << std::endl;
+//        std::cout << "wait_if_full_push: wait end" << std::endl;
         m_queue.emplace_back(std::move(v));
-        if(m_queue.size() == 1)
+//        if(m_queue.size() == 1)
         {
-            std::cout << "wait_if_full_push: notify" << std::endl;
+//            std::cout << "wait_if_full_push: notify" << std::endl;
             m_on_not_empty.notify_all();
         }
     }
