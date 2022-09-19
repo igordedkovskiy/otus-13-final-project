@@ -101,6 +101,7 @@ public:
     /// \brief  Wait if queue is full, push \b v into queue.
     void wait_if_full_push(T v)
     {
+        std::cout << "wait_if_full_push: lock" << std::endl;
         std::unique_lock lk {m_mutex};
         // condition_variable::wait atomically unlocks lk, blocks the current executing thread,
         // and adds it to the list of threads waiting on *this. The thread will be unblocked
@@ -108,10 +109,15 @@ public:
         // When unblocked, regardless of the reason, lock is reacquired and wait exits.
         // Thus, deadlock is impossible.
         // Overload with predicate may be used to ignore spurious awakenings.
+        std::cout << "wait_if_full_push: wait" << std::endl;
         m_on_space_available.wait(lk, [this]{ return !full(); });
+        std::cout << "wait_if_full_push: wait end" << std::endl;
         m_queue.emplace_back(std::move(v));
         if(m_queue.size() == 1)
+        {
+            std::cout << "wait_if_full_push: notify" << std::endl;
             m_on_not_empty.notify_all();
+        }
     }
 
     /// \brief Wait until queue is empty, dequeue element and place it's value into \b v.
