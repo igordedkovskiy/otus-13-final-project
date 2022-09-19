@@ -47,7 +47,7 @@ public:
         if(full_nonblocking())
             return false;
         m_queue.emplace_back(std::move(v));
-//        if(m_queue.size() == 1)
+        if(m_queue.size() == 1)
             m_on_not_empty.notify_all();
         return true;
     }
@@ -62,7 +62,7 @@ public:
             return false;
         v = std::move(m_queue.front());
         m_queue.pop_front();
-//        if(m_queue.size() == SIZE - 1)
+        if(m_queue.size() == SIZE - 1)
             m_on_space_available.notify_all();
         return true;
     }
@@ -76,7 +76,7 @@ public:
             return nullptr;
         auto p {std::make_unique<T>(m_queue.front())};
         m_queue.pop_front();
-//        if(m_queue.size() == SIZE - 1)
+        if(m_queue.size() == SIZE - 1)
             m_on_space_available.notify_all();
         return p;
     }
@@ -122,7 +122,7 @@ public:
         m_on_space_available.wait(lk, [this]{ return !full_nonblocking(); });
 //        m_on_space_available.wait(lk, [this]{ return m_queue.size() < SIZE; });
         m_queue.emplace_back(std::move(v));
-//        if(m_queue.size() == 1)
+        if(m_queue.size() == 1)
             m_on_not_empty.notify_all();
     }
 
@@ -133,7 +133,7 @@ public:
         m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
         v = std::move(m_queue.front());
         m_queue.pop_front();
-//        if(m_queue.size() == SIZE - 1)
+        if(m_queue.size() == SIZE - 1)
             m_on_space_available.notify_all();
     }
 
@@ -144,7 +144,7 @@ public:
         m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
         auto p {std::make_unique<T>(m_queue.front())};
         m_queue.pop_front();
-//        if(m_queue.size() == SIZE - 1)
+        if(m_queue.size() == SIZE - 1)
             m_on_space_available.notify_all();
         return p;
     }
