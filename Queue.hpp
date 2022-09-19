@@ -39,6 +39,18 @@ public:
 
     ~Queue() = default;
 
+    void notify_on_not_empty()
+    {
+        if(m_queue.size() == 1)
+            m_on_not_empty.notify_all();
+    }
+
+    void notify_on_space_available()
+    {
+        if(m_queue.size() == SIZE - 1)
+            m_on_space_available.notify_all();
+    }
+
     /// \brief  Push value into queue
     /// \return False if queue has no space left to push \b v, true otherwise.
     bool push(T v)
@@ -47,8 +59,7 @@ public:
         if(full_nonblocking())
             return false;
         m_queue.emplace_back(std::move(v));
-//        if(m_queue.size() == 1)
-            m_on_not_empty.notify_all();
+        notify_on_not_empty();
         return true;
     }
 
@@ -62,8 +73,7 @@ public:
             return false;
         v = std::move(m_queue.front());
         m_queue.pop_front();
-//        if(m_queue.size() == SIZE - 1)
-            m_on_space_available.notify_all();
+        notify_on_space_available();
         return true;
     }
 
@@ -76,8 +86,7 @@ public:
             return nullptr;
         auto p {std::make_unique<T>(m_queue.front())};
         m_queue.pop_front();
-//        if(m_queue.size() == SIZE - 1)
-            m_on_space_available.notify_all();
+        notify_on_space_available();
         return p;
     }
 
@@ -119,11 +128,11 @@ public:
         // When unblocked, regardless of the reason, lock is reacquired and wait exits.
         // Thus, deadlock is impossible.
         // Overload with predicate may be used to ignore spurious awakenings.
-        m_on_space_available.wait(lk, [this]{ return !full_nonblocking(); });
+        while(full_nonblocking())
+            m_on_space_available.wait(lk, [this]{ return !full_nonblocking(); });
 //        m_on_space_available.wait(lk, [this]{ return m_queue.size() < SIZE; });
         m_queue.emplace_back(std::move(v));
-//        if(m_queue.size() == 1)
-            m_on_not_empty.notify_all();
+        notify_on_not_empty();
     }
 
     /// \brief Wait until queue is empty, dequeue element and place it's value into \b v.
@@ -133,19 +142,18 @@ public:
         m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
         v = std::move(m_queue.front());
         m_queue.pop_front();
-//        if(m_queue.size() == SIZE - 1)
-            m_on_space_available.notify_all();
+        notify_on_space_available();
     }
 
     /// \brief Wait until queue is empty, dequeue element and return it's value.
     pointer_type wait_and_pop()
     {
         std::unique_lock lk {m_mutex};
-        m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
+        while(m_queue.empty())
+            m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
         auto p {std::make_unique<T>(m_queue.front())};
         m_queue.pop_front();
-//        if(m_queue.size() == SIZE - 1)
-            m_on_space_available.notify_all();
+        notify_on_space_available();
         return p;
     }
 

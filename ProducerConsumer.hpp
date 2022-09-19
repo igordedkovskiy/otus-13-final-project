@@ -22,8 +22,10 @@ template<typename T> class Framework
 public:
     using queue_t = threadsafe_containers::Queue<T>;
 
-    using ProducerT = void(std::stop_token stop_token, queue_t& queue);
-    using ConsumerT = void(std::stop_token stop_token, queue_t& queue);
+//    using ProducerT = void(std::stop_token stop_token, queue_t& queue);
+//    using ConsumerT = void(std::stop_token stop_token, queue_t& queue);
+    using ProducerT = void(queue_t& queue);
+    using ConsumerT = void(queue_t& queue);
     using MainT = void(queue_t& queue);
 
 public:
@@ -35,24 +37,22 @@ public:
         m_consumer{consumer},
         m_main{main_cycle},
         m_num_of_producers{num_of_producers},
-        m_num_of_consumers{num_of_consumers},
-        producers_left{num_of_producers},
-        consumers_left{num_of_consumers}
+        m_num_of_consumers{num_of_consumers}
     {}
 
     ~Framework()
     {
-        if(producers_left)
-        {
-            for(auto& t:m_producers)
-                t.request_stop();
-        }
-        if(consumers_left)
-        {
-            for(auto& t:m_consumers)
-                t.request_stop();
-        }
-        wait();
+//        if(producers_left)
+//        {
+//            for(auto& t:m_producers)
+//                t.request_stop();
+//        }
+//        if(consumers_left)
+//        {
+//            for(auto& t:m_consumers)
+//                t.request_stop();
+//        }
+//        wait();
     }
 
     void run()
@@ -60,14 +60,24 @@ public:
         producers_left = m_num_of_producers;
         consumers_left = m_num_of_consumers;
 
-        auto producer_wrapper = [this](std::stop_token stop_token)
+//        auto producer_wrapper = [this](std::stop_token stop_token)
+//        {
+//            m_producer(stop_token, m_queue);
+//            --producers_left;
+//        };
+//        auto consumer_wrapper = [this](std::stop_token stop_token)
+//        {
+//            m_consumer(stop_token, m_queue);
+//            --consumers_left;
+//        };
+        auto producer_wrapper = [this]()
         {
-            m_producer(stop_token, m_queue);
+            m_producer(m_queue);
             --producers_left;
         };
-        auto consumer_wrapper = [this](std::stop_token stop_token)
+        auto consumer_wrapper = [this]()
         {
-            m_consumer(stop_token, m_queue);
+            m_consumer(m_queue);
             --consumers_left;
         };
 
@@ -91,7 +101,7 @@ public:
         }
 
         m_main(m_queue);
-        wait();
+//        wait();
     }
 
 private:
@@ -112,8 +122,8 @@ private:
     std::size_t m_num_of_producers {1};
     std::size_t m_num_of_consumers {1};
 
-    std::vector<std::jthread> m_producers;
-    std::vector<std::jthread> m_consumers;
+    std::vector<std::thread> m_producers;
+    std::vector<std::thread> m_consumers;
 
     threads_cntr_t producers_left {0};
     threads_cntr_t consumers_left {0};

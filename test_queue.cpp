@@ -11,7 +11,7 @@
 #include "serialization.hpp"
 #include "ProducerConsumer.hpp"
 
-/*
+
 /// \brief Compare execution time in two cases. First is one producer, one consumer.
 ///        Second is multiple producers, multiple consumers.
 TEST(TEST_QUEUE, producer_consumer)
@@ -73,7 +73,8 @@ TEST(TEST_QUEUE, producer_consumer)
         std::size_t producers_cntr {0};
         std::mutex cntr_mutex;
         auto producer = [&data, &producers_cntr, &cntr_mutex, &producers_left]
-                ([[maybe_unused]] std::stop_token stop_token, queue_t& queue)
+                //([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
+                (queue_t& queue)
         {
             try
             {
@@ -89,8 +90,8 @@ TEST(TEST_QUEUE, producer_consumer)
                 for(auto el:d)
                 {
                     queue.wait_and_push(el);
-                    if(stop_token.stop_requested())
-                        break;
+                    //if(stoptoken.stop_requested())
+                    //    break;
                 }
             }
             catch(const std::exception& e)
@@ -101,11 +102,12 @@ TEST(TEST_QUEUE, producer_consumer)
         };
 
         auto consumer = [&consumers_left]
-                ([[maybe_unused]] std::stop_token stop_token, queue_t& queue)
+                //([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
+                (queue_t& queue)
         {
             try
             {
-                while(!queue.empty() && !stop_token.stop_requested())
+                while(!queue.empty())// && !stoptoken.stop_requested())
                 {
                     do
                     {
@@ -119,9 +121,9 @@ TEST(TEST_QUEUE, producer_consumer)
                                 v.emplace_back(cntr + *el);
                         }
                     }
-                    while(!queue.empty() && !stop_token.stop_requested());
-                    if(stop_token.stop_requested())
-                        break;
+                    while(!queue.empty());// && !stoptoken.stop_requested());
+                    //if(stoptoken.stop_requested())
+                    //    break;
                     using namespace std::chrono_literals;
                     std::this_thread::sleep_for(10ms);
                 }
@@ -135,22 +137,21 @@ TEST(TEST_QUEUE, producer_consumer)
 
         queue_t queue;
 
-        std::vector<std::jthread> producers;
+        std::vector<std::thread> producers;
         producers.reserve(num_of_producers);
         const auto start {clock::now()};
         for(std::size_t cntr {0}; cntr < num_of_producers; ++cntr)
             producers.emplace_back(producer, std::ref(queue));
-
-        std::vector<std::jthread> consumers;
-        consumers.reserve(num_of_consumers);
-        for(std::size_t cntr {0}; cntr < num_of_consumers; ++cntr)
-            consumers.emplace_back(consumer, std::ref(queue));
-
         for(auto& prod:producers)
         {
             if(prod.joinable())
                 prod.detach();
         }
+
+        std::vector<std::thread> consumers;
+        consumers.reserve(num_of_consumers);
+        for(std::size_t cntr {0}; cntr < num_of_consumers; ++cntr)
+            consumers.emplace_back(consumer, std::ref(queue));
         for(auto& cons:consumers)
         {
             if(cons.joinable())
@@ -183,7 +184,11 @@ TEST(TEST_QUEUE, producer_consumer)
             }
             // wait until queue is empty
             while(!queue.empty())
+            {
+                //if(!consumers_left)
+                //    throw Exception{};
                 std::this_thread::sleep_for(10ms);
+            }
 
             // wait until consumers and producers finish their work
             while(consumers_left || producers_left)
@@ -222,8 +227,8 @@ TEST(TEST_QUEUE, producer_consumer)
         std::cerr << e.what() << std::endl;
     }
 }
-*/
 
+/*
 TEST(TEST_QUEUE, producer_consumer_framework)
 {
     const auto num_of_cores {std::thread::hardware_concurrency()};
@@ -280,7 +285,8 @@ TEST(TEST_QUEUE, producer_consumer_framework)
         threads_cntr_t producers_cntr {0};
         std::mutex cntr_mutex;
         auto producer = [&data, &producers_cntr, &cntr_mutex]
-                ([[maybe_unused]] std::stop_token stop_token, queue_t& queue)
+                //([[maybe_unused]] std::stop_token stop_token, queue_t& queue)
+                (queue_t& queue)
         {
             try
             {
@@ -289,14 +295,9 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                 cntr_mutex.unlock();
                 for(auto el:d)
                 {
-                    //queue.wait_and_push(el);
-                    while(1)
-                    {
-                        if(queue.push(el))
-                            break;
-                    }
-                    if(stop_token.stop_requested())
-                        break;
+                    queue.wait_and_push(el);
+                    //if(stop_token.stop_requested())
+                    //    break;
                 }
             }
             catch(const std::exception& e)
@@ -304,16 +305,16 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                 std::cerr << e.what() << std::endl;
             }
         };
-        auto consumer = []([[maybe_unused]] std::stop_token stop_token, queue_t& queue)
+        //auto consumer = []([[maybe_unused]] std::stop_token stop_token, queue_t& queue)
+        auto consumer = [](queue_t& queue)
         {
             try
             {
-                while(!queue.empty() && !stop_token.stop_requested())
+                while(!queue.empty())// && !stop_token.stop_requested())
                 {
                     do
                     {
-                        //auto el {queue.wait_and_pop()};
-                        auto el {queue.pop()};
+                        auto el {queue.wait_and_pop()};
                         if(el)
                         {
                             std::vector<data_t> v;
@@ -323,9 +324,9 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                                 v.emplace_back(cntr + *el);
                         }
                     }
-                    while(!queue.empty() && !stop_token.stop_requested());
-                    if(stop_token.stop_requested())
-                        break;
+                    while(!queue.empty());// && !stop_token.stop_requested());
+                    //if(stop_token.stop_requested())
+                    //    break;
                     using namespace std::chrono_literals;
                     std::this_thread::sleep_for(10ms);
                 }
@@ -424,4 +425,4 @@ TEST(TEST_QUEUE, producer_consumer_framework)
         std::cerr << e.what() << std::endl;
     }
 }
-
+*/
