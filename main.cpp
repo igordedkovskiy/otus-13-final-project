@@ -97,7 +97,6 @@ int func()
                 {
                     do
                     {
-                        //auto el {queue.pop()};
                         auto el {queue.wait_and_pop()};
                         if(el)
                         {
@@ -109,6 +108,8 @@ int func()
                         }
                     }
                     while(!queue.empty() && !stop_token.stop_requested());
+                    if(stop_token.stop_requested())
+                        break;
                     using namespace std::chrono_literals;
                     std::this_thread::sleep_for(10ms);
                 }

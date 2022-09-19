@@ -109,7 +109,6 @@ TEST(TEST_QUEUE, producer_consumer)
                 {
                     do
                     {
-                        //auto el {queue.pop()};
                         auto el {queue.wait_and_pop()};
                         if(el)
                         {
@@ -121,6 +120,8 @@ TEST(TEST_QUEUE, producer_consumer)
                         }
                     }
                     while(!queue.empty() && !stop_token.stop_requested());
+                    if(stop_token.stop_requested())
+                        break;
                     using namespace std::chrono_literals;
                     std::this_thread::sleep_for(10ms);
                 }
@@ -235,7 +236,6 @@ TEST(TEST_QUEUE, producer_consumer_framework)
     using data_t = std::uint64_t;
     using data_collection_t = std::vector<data_t>;
     using all_data_collection_t = std::vector<data_collection_t>;
-    using cond_cntr_t = std::atomic_llong;
     using num_of_elements_t = std::size_t;
     using ranges_t = std::vector<num_of_elements_t>;
     using queue_t = Queue<data_t>;
@@ -273,7 +273,6 @@ TEST(TEST_QUEUE, producer_consumer_framework)
 
         const auto ranges {split()};
         const auto data {make_data(num_of_producers, ranges)};
-        cond_cntr_t elements_left (num_of_elements);
 
         using threads_cntr_t = std::atomic<std::size_t>;
         threads_cntr_t producers_cntr {0};
@@ -284,10 +283,8 @@ TEST(TEST_QUEUE, producer_consumer_framework)
             try
             {
                 cntr_mutex.lock();
-                //std::cout << "prod: " << std::this_thread::get_id() << ". lock" << std::endl;
                 const auto& d {data[producers_cntr++]};
                 cntr_mutex.unlock();
-                //std::cout << "prod: " << std::this_thread::get_id() << ". unlock" << std::endl;
                 for(auto el:d)
                 {
                     queue.wait_and_push(el);
@@ -308,10 +305,7 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                 {
                     do
                     {
-                        //std::cout << "cons: " << std::this_thread::get_id() << ". before pop" << std::endl;
-                        //auto el {queue.pop()};
                         auto el {queue.wait_and_pop()};
-                        //std::cout << "cons: " << std::this_thread::get_id() << ". after pop" << std::endl;
                         if(el)
                         {
                             std::vector<data_t> v;
@@ -322,6 +316,8 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                         }
                     }
                     while(!queue.empty() && !stop_token.stop_requested());
+                    if(stop_token.stop_requested())
+                        break;
                     using namespace std::chrono_literals;
                     std::this_thread::sleep_for(10ms);
                 }

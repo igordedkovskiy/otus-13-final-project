@@ -92,7 +92,7 @@ public:
     void wait_until_full()
     {
         std::unique_lock lk {m_mutex};
-        m_on_space_available.wait(lk, [this]{ return !m_queue.empty(); });
+        m_on_space_available.wait(lk, [this]{ return !full_nonblocking(); });
     }
 
     /// \return True if queue is empty, false otherwise.
@@ -120,6 +120,7 @@ public:
         // Thus, deadlock is impossible.
         // Overload with predicate may be used to ignore spurious awakenings.
         m_on_space_available.wait(lk, [this]{ return !full_nonblocking(); });
+//        m_on_space_available.wait(lk, [this]{ return m_queue.size() < SIZE; });
         m_queue.emplace_back(std::move(v));
         if(m_queue.size() == 1)
             m_on_not_empty.notify_all();
