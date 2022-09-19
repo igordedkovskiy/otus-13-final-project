@@ -283,8 +283,10 @@ TEST(TEST_QUEUE, producer_consumer_framework)
             try
             {
                 cntr_mutex.lock();
+                std::cout << "prod: " << std::this_thread::get_id() << ". lock" << std::endl;
                 const auto& d {data[producers_cntr++]};
                 cntr_mutex.unlock();
+                std::cout << "prod: " << std::this_thread::get_id() << ". unlock" << std::endl;
                 for(auto el:d)
                 {
                     queue.wait_if_full_push(el);
@@ -305,7 +307,9 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                 {
                     do
                     {
+                        std::cout << "cons: " << std::this_thread::get_id() << ". before pop" << std::endl;
                         auto el {queue.pop()};
+                        std::cout << "cons: " << std::this_thread::get_id() << ". after pop" << std::endl;
                         if(el)
                         {
                             std::vector<data_t> v;
