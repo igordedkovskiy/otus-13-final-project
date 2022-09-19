@@ -259,6 +259,7 @@ TEST(TEST_QUEUE, producer_consumer_framework)
     auto run = [&make_data]
             (std::size_t num_of_producers, std::size_t num_of_consumers, std::size_t num_of_elements)
     {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
         auto split = [&num_of_elements, &num_of_producers]()
         {
             if(num_of_producers == 1)
