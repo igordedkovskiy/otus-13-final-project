@@ -42,14 +42,14 @@ public:
     void notify_on_not_empty()
     {
         //if(m_queue.size() == 1)
-        if(m_queue.size())
+//        if(m_queue.size())
             m_on_not_empty.notify_all();
     }
 
     void notify_on_space_available()
     {
         //if(m_queue.size() == SIZE - 1)
-        if(m_queue.size() < SIZE)
+//        if(m_queue.size() < SIZE)
             m_on_space_available.notify_all();
     }
 
