@@ -89,7 +89,8 @@ TEST(TEST_QUEUE, producer_consumer)
                 const auto d {get()};
                 for(auto el:d)
                 {
-                    queue.wait_and_push(el);
+                    //queue.wait_and_push(el);
+                    while(!queue.push(el));
                     //if(stoptoken.stop_requested())
                     //    break;
                 }
@@ -111,7 +112,8 @@ TEST(TEST_QUEUE, producer_consumer)
                 {
                     do
                     {
-                        auto el {queue.wait_and_pop()};
+                        //auto el {queue.wait_and_pop()};
+                        auto el {queue.pop()};
                         if(el)
                         {
                             std::vector<data_t> v;
