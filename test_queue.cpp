@@ -88,7 +88,7 @@ TEST(TEST_QUEUE, producer_consumer)
                 const auto d {get()};
                 for(auto el:d)
                 {
-                    queue.wait_if_full_push(el);
+                    queue.wait_and_push(el);
                     if(stop_token.stop_requested())
                         break;
                 }
@@ -109,7 +109,8 @@ TEST(TEST_QUEUE, producer_consumer)
                 {
                     do
                     {
-                        auto el {queue.pop()};
+                        //auto el {queue.pop()};
+                        auto el {queue.wait_and_pop()};
                         if(el)
                         {
                             std::vector<data_t> v;
@@ -289,7 +290,7 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                 //std::cout << "prod: " << std::this_thread::get_id() << ". unlock" << std::endl;
                 for(auto el:d)
                 {
-                    queue.wait_if_full_push(el);
+                    queue.wait_and_push(el);
                     if(stop_token.stop_requested())
                         break;
                 }
@@ -308,7 +309,8 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                     do
                     {
                         //std::cout << "cons: " << std::this_thread::get_id() << ". before pop" << std::endl;
-                        auto el {queue.pop()};
+                        //auto el {queue.pop()};
+                        auto el {queue.wait_and_pop()};
                         //std::cout << "cons: " << std::this_thread::get_id() << ". after pop" << std::endl;
                         if(el)
                         {

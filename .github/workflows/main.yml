@@ -26,10 +26,10 @@ jobs:
           CC:   gcc-11
           CXX:  g++-11
       - run: cmake --build ./Release
-      #- run: cmake --build ./Release --target test
-      - run: ./Release/tests --gtest_filter=TEST_QUEUE.serializer_exceptions
+      - run: cmake --build ./Release --target test
+      #- run: ./Release/tests --gtest_filter=TEST_QUEUE.serializer_exceptions
       #- run: ./Release/tests --gtest_filter=TEST_QUEUE.producer_consumer
-      - run: ./Release/tests --gtest_filter=TEST_QUEUE.producer_consumer_framework
+      #- run: ./Release/tests --gtest_filter=TEST_QUEUE.producer_consumer_framework
       - run: cmake --build ./Release --target package
       - name: Create Release
         id: create_release

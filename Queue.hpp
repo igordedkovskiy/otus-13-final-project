@@ -44,7 +44,7 @@ public:
     bool push(T v)
     {
         std::scoped_lock lk {m_mutex};
-        if(full())
+        if(full_nonblocking())
             return false;
         m_queue.emplace_back(std::move(v));
         if(m_queue.size() == 1)
@@ -62,7 +62,7 @@ public:
             return false;
         v = std::move(m_queue.front());
         m_queue.pop_front();
-//        if(m_queue.size() == SIZE - 1)
+        if(m_queue.size() == SIZE - 1)
             m_on_space_available.notify_all();
         return true;
     }
@@ -76,7 +76,7 @@ public:
             return nullptr;
         auto p {std::make_unique<T>(m_queue.front())};
         m_queue.pop_front();
-//        if(m_queue.size() == SIZE - 1)
+        if(m_queue.size() == SIZE - 1)
             m_on_space_available.notify_all();
         return p;
     }
@@ -84,24 +84,34 @@ public:
     /// \brief Wait until queue is empty.
     void wait_until_empty()
     {
-       while(m_queue.empty())
-       {
-           std::unique_lock lk {m_mutex};
-           m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
-       }
+        std::unique_lock lk {m_mutex};
+        m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
+    }
+
+    /// \brief Wait until queue is full.
+    void wait_until_full()
+    {
+        std::unique_lock lk {m_mutex};
+        m_on_space_available.wait(lk, [this]{ return !m_queue.empty(); });
     }
 
     /// \return True if queue is empty, false otherwise.
-    bool empty()
+    bool empty() const
     {
         std::scoped_lock lk {m_mutex};
         return m_queue.empty();
     }
 
-    /// \brief  Wait if queue is full, push \b v into queue.
-    void wait_if_full_push(T v)
+    /// \return True if queue is false, false otherwise.
+    bool full() const
     {
-//        std::cout << "wait_if_full_push: lock" << std::endl;
+        std::scoped_lock lk {m_mutex};
+        return full_nonblocking();
+    }
+
+    /// \brief  Wait if queue is full, push \b v into queue.
+    void wait_and_push(T v)
+    {
         std::unique_lock lk {m_mutex};
         // condition_variable::wait atomically unlocks lk, blocks the current executing thread,
         // and adds it to the list of threads waiting on *this. The thread will be unblocked
@@ -109,19 +119,14 @@ public:
         // When unblocked, regardless of the reason, lock is reacquired and wait exits.
         // Thus, deadlock is impossible.
         // Overload with predicate may be used to ignore spurious awakenings.
-//        std::cout << "wait_if_full_push: wait" << std::endl;
-        m_on_space_available.wait(lk, [this]{ return !full(); });
-//        std::cout << "wait_if_full_push: wait end" << std::endl;
+        m_on_space_available.wait(lk, [this]{ return !full_nonblocking(); });
         m_queue.emplace_back(std::move(v));
-//        if(m_queue.size() == 1)
-        {
-//            std::cout << "wait_if_full_push: notify" << std::endl;
+        if(m_queue.size() == 1)
             m_on_not_empty.notify_all();
-        }
     }
 
     /// \brief Wait until queue is empty, dequeue element and place it's value into \b v.
-    void wait_until_empty_pop(T& v)
+    void wait_and_pop(T& v)
     {
         std::unique_lock lk {m_mutex};
         m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
@@ -132,7 +137,7 @@ public:
     }
 
     /// \brief Wait until queue is empty, dequeue element and return it's value.
-    pointer_type wait_until_empty_pop()
+    pointer_type wait_and_pop()
     {
         std::unique_lock lk {m_mutex};
         m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
@@ -143,7 +148,7 @@ public:
         return p;
     }
 
-    void clear() noexcept
+    void clear()
     {
         std::scoped_lock lk {m_mutex};
         m_queue.clear();
@@ -165,7 +170,7 @@ public:
     }
 
 private:
-    bool full() const noexcept
+    bool full_nonblocking() const noexcept
     {
         return !(m_queue.size() < SIZE);
     }
@@ -209,7 +214,7 @@ private:
     queue_t m_queue;
     std::condition_variable m_on_not_empty;
     std::condition_variable m_on_space_available;
-    std::mutex m_mutex;
+    mutable std::mutex m_mutex;
 };
 
 }

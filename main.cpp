@@ -79,7 +79,7 @@ int func()
                 cntr_mutex.unlock();
                 for(auto el:d)
                 {
-                    queue.wait_if_full_push(el);
+                    queue.wait_and_push(el);
                     if(stop_token.stop_requested())
                         break;
                 }
@@ -97,7 +97,8 @@ int func()
                 {
                     do
                     {
-                        auto el {queue.pop()};
+                        //auto el {queue.pop()};
+                        auto el {queue.wait_and_pop()};
                         if(el)
                         {
                             std::vector<data_t> v;
