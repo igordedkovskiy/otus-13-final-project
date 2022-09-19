@@ -289,7 +289,10 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                 cntr_mutex.unlock();
                 for(auto el:d)
                 {
-                    queue.wait_and_push(el);
+                    //queue.wait_and_push(el);
+                    while(1) {
+                        if(queue.push(el)
+                            break; }
                     if(stop_token.stop_requested())
                         break;
                 }
@@ -307,7 +310,8 @@ TEST(TEST_QUEUE, producer_consumer_framework)
                 {
                     do
                     {
-                        auto el {queue.wait_and_pop()};
+                        //auto el {queue.wait_and_pop()};
+                        auto el {queue.pop()};
                         if(el)
                         {
                             std::vector<data_t> v;
