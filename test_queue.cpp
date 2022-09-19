@@ -70,35 +70,37 @@ TEST(TEST_QUEUE, producer_consumer)
 
         using queue_t = Queue<data_t>;
 
-        std::size_t producers_cntr {0};
-        std::mutex cntr_mutex;
-        auto producer = [&data, &producers_cntr, &cntr_mutex, &producers_left]
-                //([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
-                (queue_t& queue)
+//        std::atomic<std::size_t> producers_cntr {0};
+//        std::mutex cntr_mutex;
+//        auto producer = [&data, &producers_cntr, &producers_left]
+//        auto producer = [&data, &producers_cntr, &cntr_mutex, &producers_left]
+//                ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
+        auto producer = [&data, &producers_left](queue_t& queue, std::size_t num)
         {
-//            try
-//            {
-                auto get = [&data, &producers_cntr, &cntr_mutex]()
-                {
-                    std::scoped_lock lk {cntr_mutex};
-                    const auto& d {data[producers_cntr]};
-                    ++producers_cntr;
-                    return d;
-                };
+            try
+            {
+//                auto get = [&data, &producers_cntr, &cntr_mutex]()->const data_collection_t&
+//                {
+//                    std::scoped_lock lk {cntr_mutex};
+//                    const auto& d {data[producers_cntr]};
+//                    ++producers_cntr;
+//                    return d;
+//                };
 
-                const auto d {get()};
+//                const auto d {get()};
+                const auto& d {data[num]};
                 for(auto el:d)
                 {
-                    //queue.wait_and_push(el);
-                    while(!queue.push(el));
+                    queue.wait_and_push(el);
+                    //while(!queue.push(el));
                     //if(stoptoken.stop_requested())
                     //    break;
                 }
-//            }
-//            catch(const std::exception& e)
-//            {
-//                std::cerr << e.what() << std::endl;
-//            }
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << std::endl;
+            }
             --producers_left;
         };
 
@@ -106,14 +108,14 @@ TEST(TEST_QUEUE, producer_consumer)
                 //([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
                 (queue_t& queue)
         {
-//            try
-//            {
+            try
+            {
                 while(!queue.empty())// && !stoptoken.stop_requested())
                 {
                     do
                     {
-                        //auto el {queue.wait_and_pop()};
-                        auto el {queue.pop()};
+                        auto el {queue.wait_and_pop()};
+                        //auto el {queue.pop()};
                         if(el)
                         {
                             std::vector<data_t> v;
@@ -129,11 +131,11 @@ TEST(TEST_QUEUE, producer_consumer)
                     using namespace std::chrono_literals;
                     std::this_thread::sleep_for(10ms);
                 }
-//            }
-//            catch(const std::exception& e)
-//            {
-//                std::cerr << e.what() << std::endl;
-//            }
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << std::endl;
+            }
             --consumers_left;
         };
 
@@ -143,7 +145,7 @@ TEST(TEST_QUEUE, producer_consumer)
         producers.reserve(num_of_producers);
         const auto start {clock::now()};
         for(std::size_t cntr {0}; cntr < num_of_producers; ++cntr)
-            producers.emplace_back(producer, std::ref(queue));
+            producers.emplace_back(producer, std::ref(queue), cntr);
 
         std::vector<std::thread> consumers;
         consumers.reserve(num_of_consumers);

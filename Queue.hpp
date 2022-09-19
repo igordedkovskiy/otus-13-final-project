@@ -24,7 +24,7 @@ namespace threadsafe_containers
 namespace fs = std::filesystem;
 
 /// \brief Simple threadsafe queue
-template<typename T, std::size_t SIZE = 10> class Queue
+template<typename T, std::size_t SIZE = 5> class Queue
 {
 public:
     using value_type = T;
@@ -41,14 +41,14 @@ public:
 
     void notify_on_not_empty()
     {
-        //if(m_queue.size() == 1)
+        if(m_queue.size() == 1)
 //        if(m_queue.size())
             m_on_not_empty.notify_all();
     }
 
     void notify_on_space_available()
     {
-        //if(m_queue.size() == SIZE - 1)
+        if(m_queue.size() == SIZE - 1)
 //        if(m_queue.size() < SIZE)
             m_on_space_available.notify_all();
     }
