@@ -1,4 +1,4 @@
-name: 'threadsafe_queue'
+name: 'producer-consumer'
 
 on:
   push:
@@ -48,8 +48,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./Release/threadsafe_queue-0.0.${{ github.run_number }}-Linux.deb
-          asset_name: threadsafe_queue-0.0.${{ github.run_number }}-Linux.deb
+          asset_path: ./Release/producer-consumer-0.0.${{ github.run_number }}-Linux.deb
+          asset_name: producer-consumer-0.0.${{ github.run_number }}-Linux.deb
           asset_content_type: application/vnd.debian.binary-package
 #  generate-docs:
 #    needs: build
