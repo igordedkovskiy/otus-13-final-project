@@ -70,27 +70,23 @@ TEST(TEST_QUEUE, producer_consumer)
         using queue_t = Queue<data_t>;
         std::atomic<std::size_t> elements_left {num_of_elements};
 
-//        std::atomic<std::size_t> producers_cntr {0};
-//        std::mutex cntr_mutex;
-//        auto producer = [&data, &producers_cntr, &producers_left]
-//        auto producer = [&data, &producers_cntr, &cntr_mutex, &producers_left]
-//                ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
-        auto producer = [&data, &producers_left, &elements_left]
-//                (queue_t& queue, std::size_t num)
-                ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue, std::size_t num)
+        std::size_t producers_cntr {0};
+        std::mutex cntr_mutex;
+        auto producer = [&data, &producers_left, &elements_left, &producers_cntr, &cntr_mutex]
+                ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
         {
             try
             {
-//                auto get = [&data, &producers_cntr, &cntr_mutex]()->const data_collection_t&
-//                {
-//                    std::scoped_lock lk {cntr_mutex};
-//                    const auto& d {data[producers_cntr]};
-//                    ++producers_cntr;
-//                    return d;
-//                };
+                auto get = [&data, &producers_cntr, &cntr_mutex]()->const data_collection_t&
+                {
+                    std::scoped_lock lk {cntr_mutex};
+                    const auto& d {data[producers_cntr]};
+                    ++producers_cntr;
+                    return d;
+                };
 
-//                const auto d {get()};
-                const auto& d {data[num]};
+                const auto d {get()};
+//                const auto& d {data[num]};
                 for(auto el:d)
                 {
                     queue.wait_and_push(el);
@@ -140,7 +136,7 @@ TEST(TEST_QUEUE, producer_consumer)
         producers.reserve(num_of_producers);
         const auto start {clock::now()};
         for(std::size_t cntr {0}; cntr < num_of_producers; ++cntr)
-            producers.emplace_back(producer, std::ref(queue), cntr);
+            producers.emplace_back(producer, std::ref(queue));
 
         std::vector<std::jthread> consumers;
         consumers.reserve(num_of_consumers);
