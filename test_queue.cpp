@@ -120,8 +120,9 @@ TEST(TEST_QUEUE, producer_consumer)
                     //do
                     {
                         //auto cond = [stoptoken](){ return stoptoken.stop_requested(); };
-                        //auto el {queue.wait_and_pop(cond)};
-                        auto el {queue.pop()};
+                        auto cond = [&elements_left](){ return !elements_left; };
+                        auto el {queue.wait_and_pop(cond)};
+                        //auto el {queue.pop()};
                         if(el)
                         {
                             std::vector<data_t> v;
@@ -203,7 +204,7 @@ TEST(TEST_QUEUE, producer_consumer)
         return std::make_pair(duration_cast<milliseconds>(clock::now() - start).count(), queue.empty());
     };
 
-    for(std::size_t cntr {0}; cntr < 30; ++cntr)
+    for(std::size_t cntr {0}; cntr < 10; ++cntr)
     {
         std::cout << "\ncycle: " << cntr << std::endl;
         try
