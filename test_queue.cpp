@@ -69,13 +69,14 @@ TEST(TEST_QUEUE, producer_consumer)
         threads_cntr_t consumers_left {num_of_consumers};
 
         using queue_t = Queue<data_t>;
+        std::atomic<std::size_t> elements_left {num_of_elements};
 
 //        std::atomic<std::size_t> producers_cntr {0};
 //        std::mutex cntr_mutex;
 //        auto producer = [&data, &producers_cntr, &producers_left]
 //        auto producer = [&data, &producers_cntr, &cntr_mutex, &producers_left]
 //                ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
-        auto producer = [&data, &producers_left]
+        auto producer = [&data, &producers_left, &elements_left]
 //                (queue_t& queue, std::size_t num)
                 ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue, std::size_t num)
         {
@@ -95,6 +96,7 @@ TEST(TEST_QUEUE, producer_consumer)
                 {
                     queue.wait_and_push(el);
                     //while(!queue.push(el));
+                    --elements_left;
                     if(stoptoken.stop_requested())
                         break;
                 }
@@ -106,15 +108,16 @@ TEST(TEST_QUEUE, producer_consumer)
             --producers_left;
         };
 
-        auto consumer = [&consumers_left]
+        auto consumer = [&consumers_left, &elements_left]
                 ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
                 //(queue_t& queue)
         {
             try
             {
-                while(!queue.empty() && !stoptoken.stop_requested())
+                while(!queue.empty() || elements_left)
+                //while(!queue.empty() && !stoptoken.stop_requested())
                 {
-                    do
+                    //do
                     {
                         //auto cond = [stoptoken](){ return stoptoken.stop_requested(); };
                         //auto el {queue.wait_and_pop(cond)};
@@ -128,11 +131,11 @@ TEST(TEST_QUEUE, producer_consumer)
                                 v.emplace_back(cntr + *el);
                         }
                     }
-                    while(!queue.empty() && !stoptoken.stop_requested());
-                    if(stoptoken.stop_requested())
-                        break;
-                    using namespace std::chrono_literals;
-                    std::this_thread::sleep_for(10ms);
+                    //while(!queue.empty() && !stoptoken.stop_requested());
+                    //if(stoptoken.stop_requested())
+                    //    break;
+                    //using namespace std::chrono_literals;
+                    //std::this_thread::sleep_for(10ms);
                 }
             }
             catch(const std::exception& e)
