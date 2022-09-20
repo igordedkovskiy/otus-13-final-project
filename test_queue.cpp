@@ -64,15 +64,17 @@ TEST(TEST_QUEUE, producer_consumer)
         const auto ranges {split()};
         const auto data {make_data(num_of_producers, ranges)};
 
-        using threads_cntr_t = std::atomic<std::size_t>;
-        threads_cntr_t producers_left {num_of_producers};
+//        using threads_cntr_t = std::atomic<std::size_t>;
+//        threads_cntr_t producers_left {num_of_producers};
 
         using queue_t = Queue<data_t>;
         std::atomic<std::size_t> elements_left {num_of_elements};
 
         std::size_t producers_cntr {0};
         std::mutex cntr_mutex;
-        auto producer = [&data, &producers_left, &elements_left, &producers_cntr, &cntr_mutex]
+//        auto producer = [&data, &producers_left, &elements_left, &producers_cntr, &cntr_mutex]
+//        auto producer = [&data, &producers_left, &producers_cntr, &cntr_mutex]
+        auto producer = [&data, &elements_left, &producers_cntr, &cntr_mutex]
                 ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
         {
             try
@@ -86,7 +88,6 @@ TEST(TEST_QUEUE, producer_consumer)
                 };
 
                 const auto d {get()};
-//                const auto& d {data[num]};
                 for(auto el:d)
                 {
                     queue.wait_and_push(el);
@@ -99,7 +100,7 @@ TEST(TEST_QUEUE, producer_consumer)
             {
                 std::cerr << e.what() << std::endl;
             }
-            --producers_left;
+//            --producers_left;
         };
 
         auto consumer = [&elements_left]
@@ -113,7 +114,6 @@ TEST(TEST_QUEUE, producer_consumer)
                     //auto cond = [stoptoken](){ return stoptoken.stop_requested(); };
                     auto cond = [&elements_left](){ return !elements_left; };
                     auto el {queue.wait_and_pop(cond)};
-                    //auto el {queue.pop()};
                     if(el)
                     {
                         std::vector<data_t> v;
@@ -121,6 +121,7 @@ TEST(TEST_QUEUE, producer_consumer)
                         v.reserve(N);
                         for(std::size_t cntr {0}; cntr < N; ++cntr)
                             v.emplace_back(cntr + *el);
+//                        --elements_left;
                     }
                 }
             }
@@ -147,7 +148,7 @@ TEST(TEST_QUEUE, producer_consumer)
         {
             using namespace std::chrono_literals;
             // wait until consumers and producers finish their work
-            while(producers_left)
+            while(elements_left)
                 std::this_thread::sleep_for(10ms);
             // wait until queue is empty
             while(!queue.empty())
