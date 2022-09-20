@@ -24,7 +24,7 @@ namespace threadsafe_containers
 namespace fs = std::filesystem;
 
 /// \brief Simple threadsafe queue
-template<typename T, std::size_t SIZE = 5> class Queue
+template<typename T, std::size_t SIZE = 2> class Queue
 {
 public:
     using value_type = T;
@@ -156,6 +156,20 @@ public:
         std::unique_lock lk {m_mutex};
         while(m_queue.empty())
             m_on_not_empty.wait(lk, [this]{ return !m_queue.empty(); });
+        auto p {std::make_unique<T>(m_queue.front())};
+        m_queue.pop_front();
+        notify_on_space_available();
+        return p;
+    }
+
+    template<typename P>
+    [[nodiscard]] pointer_type wait_and_pop(P exit_condition)
+    {
+        std::unique_lock lk {m_mutex};
+        //while(m_queue.empty())
+            m_on_not_empty.wait(lk, [this, &exit_condition]{ return !m_queue.empty() || exit_condition(); });
+        if(m_queue.empty())
+            return nullptr;
         auto p {std::make_unique<T>(m_queue.front())};
         m_queue.pop_front();
         notify_on_space_available();

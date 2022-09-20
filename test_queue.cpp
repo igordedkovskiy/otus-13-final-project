@@ -75,7 +75,9 @@ TEST(TEST_QUEUE, producer_consumer)
 //        auto producer = [&data, &producers_cntr, &producers_left]
 //        auto producer = [&data, &producers_cntr, &cntr_mutex, &producers_left]
 //                ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
-        auto producer = [&data, &producers_left](queue_t& queue, std::size_t num)
+        auto producer = [&data, &producers_left]
+//                (queue_t& queue, std::size_t num)
+                ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue, std::size_t num)
         {
             try
             {
@@ -93,8 +95,8 @@ TEST(TEST_QUEUE, producer_consumer)
                 {
                     queue.wait_and_push(el);
                     //while(!queue.push(el));
-                    //if(stoptoken.stop_requested())
-                    //    break;
+                    if(stoptoken.stop_requested())
+                        break;
                 }
             }
             catch(const std::exception& e)
@@ -105,17 +107,18 @@ TEST(TEST_QUEUE, producer_consumer)
         };
 
         auto consumer = [&consumers_left]
-                //([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
-                (queue_t& queue)
+                ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
+                //(queue_t& queue)
         {
             try
             {
-                while(!queue.empty())// && !stoptoken.stop_requested())
+                while(!queue.empty() && !stoptoken.stop_requested())
                 {
                     do
                     {
-                        auto el {queue.wait_and_pop()};
-                        //auto el {queue.pop()};
+                        //auto cond = [stoptoken](){ return stoptoken.stop_requested(); };
+                        //auto el {queue.wait_and_pop(cond)};
+                        auto el {queue.pop()};
                         if(el)
                         {
                             std::vector<data_t> v;
@@ -125,9 +128,9 @@ TEST(TEST_QUEUE, producer_consumer)
                                 v.emplace_back(cntr + *el);
                         }
                     }
-                    while(!queue.empty());// && !stoptoken.stop_requested());
-                    //if(stoptoken.stop_requested())
-                    //    break;
+                    while(!queue.empty() && !stoptoken.stop_requested());
+                    if(stoptoken.stop_requested())
+                        break;
                     using namespace std::chrono_literals;
                     std::this_thread::sleep_for(10ms);
                 }
@@ -141,67 +144,63 @@ TEST(TEST_QUEUE, producer_consumer)
 
         queue_t queue;
 
-        std::vector<std::thread> producers;
+        std::vector<std::jthread> producers;
         producers.reserve(num_of_producers);
         const auto start {clock::now()};
         for(std::size_t cntr {0}; cntr < num_of_producers; ++cntr)
             producers.emplace_back(producer, std::ref(queue), cntr);
 
-        std::vector<std::thread> consumers;
+        std::vector<std::jthread> consumers;
         consumers.reserve(num_of_consumers);
         for(std::size_t cntr {0}; cntr < num_of_consumers; ++cntr)
             consumers.emplace_back(consumer, std::ref(queue));
 
-        for(auto& prod:producers)
-        {
-            if(prod.joinable())
-                prod.join();
-        }
-        for(auto& cons:consumers)
-        {
-            if(cons.joinable())
-                cons.join();
-        }
+//        for(auto& prod:producers)
+//        {
+//            if(t.joinable())
+//                t.detach();
+//        }
+//        for(auto& cons:consumers)
+//        {
+//            if(t.joinable())
+//                t.detach();
+//        }
 
         // main thread
         {
             using namespace std::chrono_literals;
-            while(!queue.empty())
-            {
-                // sleep
-                // save queue (serialize)
-                // etc.
+            // wait until consumers and producers finish their work
+            while(producers_left)
+            //while(consumers_left || producers_left)
                 std::this_thread::sleep_for(10ms);
-                //auto t {system_clock::to_time_t(system_clock::now())};
-                //auto now {*std::localtime(&t)};
-                //std::string time
-                //{
-                //    std::to_string(now.tm_year + 1900) + '.' +
-                //            std::to_string(now.tm_mon + 1) + '.' +
-                //            std::to_string(now.tm_mday) + '-' +
-                //            std::to_string(now.tm_hour) + '.' +
-                //            std::to_string(now.tm_min) + '.' +
-                //            std::to_string(now.tm_sec)
-                //};
-                //using namespace serialization;
-                //Serializer<queue_t, ArchiveType::TEXT> s{"qarchive-" + time + ".txt"};
-                //s << queue;
-            }
             // wait until queue is empty
             while(!queue.empty())
+                std::this_thread::sleep_for(10ms);
+
+            for(auto& t:producers)
             {
-                //if(!consumers_left)
-                //    throw Exception{};
-                std::this_thread::sleep_for(10ms);
+                t.request_stop();
+                if(t.joinable())
+                    t.join();
             }
-            // wait until consumers and producers finish their work
-            while(consumers_left || producers_left)
-                std::this_thread::sleep_for(10ms);
+            for(auto& t:consumers)
+            {
+                t.request_stop();
+                if(t.joinable())
+                    t.join();
+            }
+
+//            if(consumers_left)
+//            {
+//                for(auto& cons:consumers)
+//                    cons.request_stop();
+//                std::this_thread::sleep_for(10ms);
+//            }
         }
         return std::make_pair(duration_cast<milliseconds>(clock::now() - start).count(), queue.empty());
     };
 
-    for(std::size_t cntr {0}; cntr < 6; ++cntr)
+    for(std::size_t cntr {0}; cntr < 30; ++cntr)
     {
         std::cout << "\ncycle: " << cntr << std::endl;
         try
