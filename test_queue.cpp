@@ -96,7 +96,14 @@ TEST(TEST_QUEUE, producer_consumer)
         };
 
         std::atomic<std::size_t> elements_left {num_of_elements};
-        auto consumer = [&elements_left]
+        std::mutex el_mutex;
+        auto dec = [&el_mutex, &elements_left]()
+        {
+            std::scoped_lock lk {el_mutex};
+            --elements_left;
+        };
+
+        auto consumer = [&elements_left, &dec]
                 ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
         {
             try
@@ -107,7 +114,8 @@ TEST(TEST_QUEUE, producer_consumer)
                     auto el {queue.wait_and_pop(cond)};
                     if(el)
                     {
-                        --elements_left;
+                        //--elements_left;
+                        dec();
                         std::vector<data_t> v;
                         constexpr std::size_t N {100000};
                         v.reserve(N);
