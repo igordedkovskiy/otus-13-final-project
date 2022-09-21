@@ -159,7 +159,7 @@ TEST(TEST_QUEUE, producer_consumer)
         return std::make_pair(duration_cast<milliseconds>(clock::now() - start).count(), queue.empty());
     };
 
-    for(std::size_t cntr {0}; cntr < 10; ++cntr)
+    for(std::size_t cntr {0}; cntr < 2; ++cntr)
     {
         std::cout << "\ncycle: " << cntr << std::endl;
         try
