@@ -90,6 +90,7 @@ TEST(TEST_QUEUE, producer_consumer)
                     return d;
                 };
                 const auto d {get()};
+                std::cout << "Elements to produce: " << d.size() << std::endl;
                 for(auto el:d)
                 {
                     queue.wait_and_push(el);
