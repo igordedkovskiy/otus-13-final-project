@@ -69,7 +69,8 @@ TEST(TEST_QUEUE, producer_consumer)
 
         std::size_t producers_cntr {0};
         std::mutex cntr_mutex;
-        auto producer = [&data, &producers_cntr, &cntr_mutex]
+        std::atomic_uint32_t elements_produced {0};
+        auto producer = [&data, &producers_cntr, &cntr_mutex, &elements_produced]
                 ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
         {
             try
@@ -85,6 +86,7 @@ TEST(TEST_QUEUE, producer_consumer)
                 for(auto el:d)
                 {
                     queue.wait_and_push(el);
+                    ++elements_produced;
                     if(stoptoken.stop_requested())
                         break;
                 }
@@ -151,7 +153,7 @@ TEST(TEST_QUEUE, producer_consumer)
             using namespace std::chrono_literals;
             while(!queue.empty())
                 std::this_thread::sleep_for(10ms);
-            std::cout << "Queue is empt. Elements left: " << elements_left << std::endl;
+            std::cout << "Queue is empty. Elements produced: " << elements_produced << " Elements left: " << elements_left << std::endl;
             while(elements_left)
                 std::this_thread::sleep_for(10ms);
             std::cout << "No elements left" << std::endl;
