@@ -95,7 +95,7 @@ TEST(TEST_QUEUE, producer_consumer)
             }
         };
 
-        std::atomic<std::size_t> elements_left {num_of_elements};
+        std::atomic<long long> elements_left {static_cast<decltype(elements_left)>(num_of_elements)};
         std::mutex el_mutex;
         auto dec = [&el_mutex, &elements_left]()
         {
