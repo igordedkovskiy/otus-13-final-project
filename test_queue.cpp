@@ -151,7 +151,7 @@ TEST(TEST_QUEUE, producer_consumer)
             using namespace std::chrono_literals;
             while(!queue.empty())
                 std::this_thread::sleep_for(10ms);
-            std::cout << "Queue is empty" << std::endl;
+            std::cout << "Queue is empt. Elements left: " << elements_left << std::endl;
             while(elements_left)
                 std::this_thread::sleep_for(10ms);
             std::cout << "No elements left" << std::endl;
