@@ -103,14 +103,17 @@ TEST(TEST_QUEUE, producer_consumer)
             --elements_left;
         };
 
-        auto consumer = [&elements_left, &dec]
+        std::atomic_bool stopreq {false};
+        auto consumer = [&elements_left, &dec, &stopreq]
                 ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
         {
             try
             {
-                while(!queue.empty() && !stoptoken.stop_requested())
+                //while(!queue.empty() && !stoptoken.stop_requested())
+                while(!queue.empty() && !stopreq)
                 {
-                    auto cond = [stoptoken](){ return stoptoken.stop_requested(); };
+                    //auto cond = [stoptoken](){ return stoptoken.stop_requested(); };
+                    auto cond = [&stopreq](){ return stopreq.load(); };
                     auto el {queue.wait_and_pop(cond)};
                     if(el)
                     {
@@ -162,11 +165,12 @@ TEST(TEST_QUEUE, producer_consumer)
                 if(t.joinable())
                     t.join();
             }
-            std::cout << "Request stop to consumers: ";
             std::cout << std::endl;
+            std::cout << "Request stop to consumers: ";
             for(auto& t:consumers)
             {
                 t.request_stop();
+                stopreq = true;
                 if(t.joinable())
                     t.join();
             }
