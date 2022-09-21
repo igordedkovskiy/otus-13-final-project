@@ -148,21 +148,29 @@ TEST(TEST_QUEUE, producer_consumer)
             using namespace std::chrono_literals;
             while(!queue.empty())
                 std::this_thread::sleep_for(10ms);
+            std::cout << "Queue is empty" << std::endl;
             while(elements_left)
                 std::this_thread::sleep_for(10ms);
+            std::cout << "No elements left" << std::endl;
 
+            std::uint8_t cntr {0};
+            std::cout << "Request stop to producers: ";
             for(auto& t:producers)
             {
+                std::cout << (int)cntr++ << ' ';
                 t.request_stop();
                 if(t.joinable())
                     t.join();
             }
+            std::cout << "Request stop to consumers: ";
+            std::cout << std::endl;
             for(auto& t:consumers)
             {
                 t.request_stop();
                 if(t.joinable())
                     t.join();
             }
+            std::cout << std::endl;
         }
         return std::make_pair(duration_cast<milliseconds>(clock::now() - start).count(), queue.empty());
     };
