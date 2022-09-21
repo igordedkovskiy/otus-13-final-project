@@ -66,6 +66,13 @@ TEST(TEST_QUEUE, producer_consumer)
 
         using queue_t = Queue<data_t>;
 
+        std::atomic<long long> elements_left {static_cast<decltype(elements_left)>(num_of_elements)};
+//        std::mutex el_mutex;
+//        auto dec = [&el_mutex, &elements_left]()
+//        {
+//            std::scoped_lock lk {el_mutex};
+//            --elements_left;
+//        };
 
         std::size_t producers_cntr {0};
         std::mutex cntr_mutex;
@@ -87,6 +94,7 @@ TEST(TEST_QUEUE, producer_consumer)
                 {
                     queue.wait_and_push(el);
                     ++elements_produced;
+                    //--elements_left;
                     if(stoptoken.stop_requested())
                         break;
                 }
@@ -97,16 +105,8 @@ TEST(TEST_QUEUE, producer_consumer)
             }
         };
 
-        std::atomic<long long> elements_left {static_cast<decltype(elements_left)>(num_of_elements)};
-        std::mutex el_mutex;
-        auto dec = [&el_mutex, &elements_left]()
-        {
-            std::scoped_lock lk {el_mutex};
-            --elements_left;
-        };
-
         std::atomic_bool stopreq {false};
-        auto consumer = [&elements_left, &dec, &stopreq]
+        auto consumer = [&elements_left, &stopreq]//, &dec]
                 ([[maybe_unused]] std::stop_token stoptoken, queue_t& queue)
         {
             try
@@ -119,8 +119,8 @@ TEST(TEST_QUEUE, producer_consumer)
                     auto el {queue.wait_and_pop(cond)};
                     if(el)
                     {
-                        //--elements_left;
-                        dec();
+                        --elements_left;
+                        //dec();
                         std::vector<data_t> v;
                         constexpr std::size_t N {100000};
                         v.reserve(N);
@@ -151,6 +151,7 @@ TEST(TEST_QUEUE, producer_consumer)
         // main thread
         {
             using namespace std::chrono_literals;
+            std::this_thread::sleep_for(10ms);
             while(!queue.empty())
                 std::this_thread::sleep_for(10ms);
             std::cout << "Queue is empty. Elements produced: " << elements_produced << " Elements left: " << elements_left << std::endl;
